@@ -42,8 +42,9 @@ struct CheerUpProvider: TimelineProvider {
         var entries: [CheerUpEntry] = []
         let currentDate = Date()
 
-        for hourOffset in 0..<24 {
-            let entryDate = Calendar.current.date(byAdding: .hour, value: hourOffset, to: currentDate)!
+        // Create entries for the next 24 hours, updating every 30 minutes
+        for halfHourOffset in 0..<48 { // 48 half-hour intervals = 24 hours
+            let entryDate = Calendar.current.date(byAdding: .minute, value: halfHourOffset * 30, to: currentDate)!
             let entry = CheerUpEntry(date: entryDate, compliment: compliments.randomElement() ?? "")
             entries.append(entry)
         }
@@ -53,24 +54,83 @@ struct CheerUpProvider: TimelineProvider {
     }
 }
 
-//Background Color
+// Teal, Black & White Theme Widget
 struct CheerUpWidgetEntryView: View {
     var entry: CheerUpEntry
+    @Environment(\.widgetFamily) var family
+    
+    // Responsive font size based on widget family - larger for better space usage
+    private var fontSize: CGFloat {
+        switch family {
+        case .systemSmall:
+            return 14
+        case .systemMedium:
+            return 18
+        case .systemLarge:
+            return 22
+        default:
+            return 18
+        }
+    }
+    
+    // Responsive padding based on widget family - reduced for more text space
+    private var padding: CGFloat {
+        switch family {
+        case .systemSmall:
+            return 6
+        case .systemMedium:
+            return 8
+        case .systemLarge:
+            return 12
+        default:
+            return 8
+        }
+    }
+    
+    // Line limit based on widget size - increased for better space usage
+    private var lineLimit: Int {
+        switch family {
+        case .systemSmall:
+            return 4
+        case .systemMedium:
+            return 6
+        case .systemLarge:
+            return 10
+        default:
+            return 6
+        }
+    }
 
     var body: some View {
         ZStack {
+            // Teal background - matches container background exactly
             Color(red: 0.0, green: 0.4, blue: 0.4)
                 .ignoresSafeArea()
+            
+            // Subtle black overlay for better contrast
+            Color.black.opacity(0.1)
+                .ignoresSafeArea()
 
-            Text(entry.compliment)
-                .font(.headline)
-                .foregroundColor(.white)
-                .multilineTextAlignment(.center)
-                .padding()
-                .minimumScaleFactor(0.6)
+            // Text takes up maximum available space
+            VStack(spacing: 2) {
+                Spacer()
+                
+                // White text with responsive sizing - takes more space
+                Text(entry.compliment)
+                    .font(.system(size: fontSize, weight: .medium))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(lineLimit)
+                    .minimumScaleFactor(0.6)
+                    .shadow(color: .black.opacity(0.3), radius: 1, x: 0, y: 1)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                
+                Spacer()
+            }
+            .padding(padding)
         }
         .clipShape(RoundedRectangle(cornerRadius: 20))
-        .containerBackground(.fill.tertiary, for: .widget)
+        .containerBackground(Color(red: 0.1, green: 0.2, blue: 0.2), for: .widget)
     }
 }
 
@@ -82,7 +142,7 @@ struct CheerUpWidget: Widget {
             CheerUpWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("CheerUp Widget")
-        .description("Get random compliments     every hour!")
+        .description("Get random compliments every 30 minutes!")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
@@ -92,5 +152,19 @@ struct CheerUpWidget: Widget {
 } timeline: {
     CheerUpEntry(date: .now, compliment: compliments[0])
     CheerUpEntry(date: .now, compliment: compliments[1])
+}
+
+#Preview(as: .systemMedium) {
+    CheerUpWidget()
+} timeline: {
+    CheerUpEntry(date: .now, compliment: compliments[2])
+    CheerUpEntry(date: .now, compliment: compliments[3])
+}
+
+#Preview(as: .systemLarge) {
+    CheerUpWidget()
+} timeline: {
+    CheerUpEntry(date: .now, compliment: compliments[4])
+    CheerUpEntry(date: .now, compliment: compliments[5])
 }
 
