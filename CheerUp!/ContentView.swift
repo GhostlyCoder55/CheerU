@@ -1,6 +1,20 @@
 import SwiftUI
 import UserNotifications
 
+// MARK: - Launch Screen View
+struct LaunchScreenView: View {
+    var body: some View {
+        ZStack {
+            Color.black
+                .ignoresSafeArea()
+            
+            Text("CheerUp!")
+                .font(.system(size: 40, weight: .bold))
+                .foregroundColor(Color(red: 0.0, green: 0.4, blue: 0.4)) // Teal color matching widget
+        }
+    }
+}
+
 // MARK: - Rotation Lock
 struct RotationLockModifier: ViewModifier {
     func body(content: Content) -> some View {
@@ -580,12 +594,12 @@ struct ContentView: View {
     @State private var showMoodTracker = true
     
     let compliments = ["You are a precious stardust!"]
-    @State private var currentCompliment: String? = nil
-    @State private var backgroundColor: Color = Color.black
-    @State private var bounce: Bool = false
-    @State private var showAboutPopup: Bool = false
-    @State private var complimentOpacity: Double = 0.0
-    @State private var isTransitioning: Bool = false
+        @State private var currentCompliment: String? = nil
+        @State private var backgroundColor: Color = Color.black
+        @State private var bounce: Bool = false
+        @State private var showAboutPopup: Bool = false
+        @State private var complimentOpacity: Double = 0.0
+        @State private var isTransitioning: Bool = false
 
     var body: some View {
         Group {
@@ -1130,20 +1144,24 @@ struct StreakView: View {
                                 .multilineTextAlignment(.center)
                                 .padding()
                         } else {
-                            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 15) {
+                            LazyVGrid(columns: Array(repeating: GridItem(.fixed(105), spacing: 15), count: 3), spacing: 15) {
                                 ForEach(streakTracker.earnedBadges, id: \.self) { badge in
                                     VStack(spacing: 8) {
                                         Image(systemName: badge.icon)
                                             .font(.system(size: 25))
                                             .foregroundColor(badge.iconColor)
+                                            .frame(height: 25)
                                         
                                         Text(badge.title)
                                             .font(.caption)
                                             .fontWeight(.semibold)
                                             .foregroundColor(.white)
                                             .multilineTextAlignment(.center)
+                                            .lineLimit(2)
+                                            .minimumScaleFactor(0.8)
+                                            .frame(height: 32)
                                     }
-                                    .padding()
+                                    .frame(width: 105, height: 90)
                                     .background(
                                         RoundedRectangle(cornerRadius: 15)
                                             .fill(Color.white.opacity(0.1))
@@ -1161,21 +1179,25 @@ struct StreakView: View {
                             .fontWeight(.bold)
                             .foregroundColor(.white)
                         
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 15) {
+                        LazyVGrid(columns: Array(repeating: GridItem(.fixed(105), spacing: 15), count: 3), spacing: 15) {
                             ForEach(StreakTracker.BadgeType.allCases, id: \.self) { badge in
                                 VStack(spacing: 8) {
                                     Image(systemName: badge.icon)
                                         .font(.system(size: 25))
                                         .foregroundColor(badge.iconColor)
                                         .opacity(streakTracker.earnedBadges.contains(badge) ? 1.0 : 0.3)
+                                        .frame(height: 25)
                                     
                                     Text(badge.title)
                                         .font(.caption)
                                         .fontWeight(.semibold)
                                         .foregroundColor(streakTracker.earnedBadges.contains(badge) ? .white : .gray)
                                         .multilineTextAlignment(.center)
+                                        .lineLimit(2)
+                                        .minimumScaleFactor(0.8)
+                                        .frame(height: 32)
                                 }
-                                .padding()
+                                .frame(width: 105, height: 90)
                                 .background(
                                     RoundedRectangle(cornerRadius: 15)
                                         .fill(streakTracker.earnedBadges.contains(badge) ? Color.white.opacity(0.1) : Color.white.opacity(0.05))
@@ -1224,60 +1246,60 @@ struct HomePageView: View {
     let compliments: [String]
     let generateCompliment: () -> Void
     let getMoodAdaptedCompliment: () -> String
-    
-    var body: some View {
-        ZStack {
-            backgroundColor.ignoresSafeArea()
-            
-            VStack {
-                Spacer()
-                Text("CheerUp!")
-                    .font(.system(size: 50, weight: .bold))
-                    .foregroundColor(.white)
-                    .offset(y: bounce ? -10 : 10)
-                    .onAppear {
-                        withAnimation(Animation.easeInOut(duration: 1).repeatForever(autoreverses: true)) {
-                            bounce.toggle()
+
+        var body: some View {
+            ZStack {
+                backgroundColor.ignoresSafeArea()
+                
+                VStack {
+                    Spacer()
+                    Text("CheerUp!")
+                        .font(.system(size: 50, weight: .bold))
+                        .foregroundColor(.white)
+                        .offset(y: bounce ? -10 : 10)
+                        .onAppear {
+                            withAnimation(Animation.easeInOut(duration: 1).repeatForever(autoreverses: true)) {
+                                bounce.toggle()
+                            }
+                        }
+                    
+                    Spacer()
+                    ZStack {
+                        if let compliment = currentCompliment {
+                            Text(compliment)
+                                .font(.largeTitle)
+                                .foregroundColor(.white)
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 20)
+                                        .fill(Color.white.opacity(0.3))
+                                        .shadow(color: .gray.opacity(0.5), radius: 5, x: 0, y: 2)
+                                )
+                                .padding(.horizontal, 30)
+                                .multilineTextAlignment(.center)
+                                .opacity(complimentOpacity)
+                                .transition(.opacity.combined(with: .scale))
+                                .animation(.easeInOut(duration: 0.3), value: complimentOpacity)
+                                .zIndex(2)
                         }
                     }
                 
                 Spacer()
-                ZStack {
-                    if let compliment = currentCompliment {
-                        Text(compliment)
-                            .font(.largeTitle)
-                            .foregroundColor(.white)
+                
+                    Button(action: {
+                        generateCompliment()
+                    }) {
+                        Text("Tap Here!")
+                            .font(.title2)
                             .padding()
+                            .frame(width: 150)
                             .background(
                                 RoundedRectangle(cornerRadius: 20)
-                                    .fill(Color.white.opacity(0.3))
-                                    .shadow(color: .gray.opacity(0.5), radius: 5, x: 0, y: 2)
+                                    .fill(Color.white.opacity(0.9))
+                                    .shadow(color: .gray.opacity(0.3), radius: 5, x: 0, y: 2)
                             )
-                            .padding(.horizontal, 30)
-                            .multilineTextAlignment(.center)
-                            .opacity(complimentOpacity)
-                            .transition(.opacity.combined(with: .scale))
-                            .animation(.easeInOut(duration: 0.3), value: complimentOpacity)
-                            .zIndex(2)
+                            .foregroundColor(.black)
                     }
-                }
-                
-                Spacer()
-                
-                Button(action: {
-                    generateCompliment()
-                }) {
-                    Text("Tap Here!")
-                        .font(.title2)
-                        .padding()
-                        .frame(width: 150)
-                        .background(
-                            RoundedRectangle(cornerRadius: 20)
-                                .fill(Color.white.opacity(0.9))
-                                .shadow(color: .gray.opacity(0.3), radius: 5, x: 0, y: 2)
-                        )
-                        .foregroundColor(.black)
-                }
                 
                 Spacer()
                 
@@ -1288,8 +1310,8 @@ struct HomePageView: View {
                     }) {
                         Image(systemName: "arrow.left")
                             .font(.title2)
-                            .foregroundColor(.white)
-                            .padding()
+                    .foregroundColor(.white)
+                    .padding()
                             .background(
                                 Circle()
                                     .fill(Color.white.opacity(0.2))
@@ -1300,18 +1322,18 @@ struct HomePageView: View {
                 }
                 .padding(.top, 20)
                 .padding(.leading, 20)
-                
-                Spacer()
-                
-                Text("Created by\nChristopher Ogbonnaya")
-                    .font(.footnote)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                    .padding(.bottom, 20)
+                    
+                    Spacer()
+                    
+                    Text("Created by\nChristopher Ogbonnaya")
+                        .font(.footnote)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .padding(.bottom, 20)
+                }
+                .padding()
             }
-            .padding()
-        }
     }
 }
 
@@ -1331,19 +1353,14 @@ struct MoodTrackerView: View {
         ZStack {
             backgroundColor.ignoresSafeArea()
             
-            VStack(spacing: 30) {
+            VStack(spacing: 0) {
                 Spacer()
                 
-                // App title
-                Text("CheerUp!")
-                    .font(.system(size: 50, weight: .bold))
-                    .foregroundColor(.white)
-                    .padding(.bottom, 20)
-                
-                // Mood selection
-                VStack(spacing: 20) {
+                // Mood selection - centered
+                VStack(spacing: 30) {
                     Text("How are you feeling?")
-                        .font(.title2)
+                        .font(.title)
+                        .fontWeight(.semibold)
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
                     
@@ -1373,32 +1390,31 @@ struct MoodTrackerView: View {
                             .animation(.easeInOut(duration: 0.2), value: selectedMood)
                         }
                     }
-                    .padding(.horizontal)
-                }
-                
-                Spacer()
-                
-                // Log mood button
-                if let mood = selectedMood {
-                    Button(action: {
-                        moodStorage.addMoodEntry(mood)
-                        streakTracker.recordCheckIn()
-                        onMoodSelected()
-                    }) {
-                        Text("Let's CheerUp!")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.black)
-                            .padding()
-                            .frame(width: 200)
-                            .background(
-                                RoundedRectangle(cornerRadius: 20)
-                                    .fill(Color.white.opacity(0.9))
-                                    .shadow(color: .gray.opacity(0.3), radius: 5, x: 0, y: 2)
-                            )
+                    .padding(.horizontal, 40)
+                    
+                    // Log mood button
+                    if let mood = selectedMood {
+                        Button(action: {
+                            moodStorage.addMoodEntry(mood)
+                            streakTracker.recordCheckIn()
+                            onMoodSelected()
+                        }) {
+                            Text("Let's CheerUp!")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.black)
+                                .padding()
+                                .frame(width: 200)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 20)
+                                        .fill(Color.white.opacity(0.9))
+                                        .shadow(color: .gray.opacity(0.3), radius: 5, x: 0, y: 2)
+                                )
+                        }
+                        .transition(.opacity.combined(with: .scale))
+                        .animation(.easeInOut(duration: 0.3), value: selectedMood)
+                        .padding(.top, 10)
                     }
-                    .transition(.opacity.combined(with: .scale))
-                    .animation(.easeInOut(duration: 0.3), value: selectedMood)
                 }
                 
                 Spacer()
@@ -1438,7 +1454,7 @@ struct MoodTrackerView: View {
                                 .foregroundColor(.orange)
                             Text("\(streakTracker.currentStreak)")
                                 .font(.caption)
-                                .fontWeight(.bold)
+                        .fontWeight(.bold)
                                 .foregroundColor(.white)
                         }
                         .frame(width: 70, height: 60)
@@ -1478,7 +1494,7 @@ struct MoodTrackerView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.bottom, 20)
             }
-            .padding()
+                        .padding()
         }
         .onAppear {
             backgroundColor = Color.black
@@ -1487,8 +1503,8 @@ struct MoodTrackerView: View {
 }
 
 // MARK: - Preview
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
-    }
+        struct ContentView_Previews: PreviewProvider {
+            static var previews: some View {
+                ContentView()
+        }
 }
