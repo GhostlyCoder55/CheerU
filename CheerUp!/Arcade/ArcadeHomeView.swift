@@ -1,0 +1,100 @@
+import SwiftUI
+
+// MARK: - Arcade Home View
+// Pure vertical presentation of the arcade mini games and visualizer experiences.
+
+struct ArcadeHomeView: View {
+    let onSelectGame: (GameIdentifier) -> Void
+
+    @State private var highScores: [GameIdentifier: Int] = [:]
+    @State private var showSettings = false
+    @State private var appeared = false
+
+    private let games: [(game: GameIdentifier, gradient: [Color])] = [
+        (.tap,      CheerUpColors.GameGradient.tap),
+        (.tradeOff, CheerUpColors.GameGradient.tradeOff),
+    ]
+
+    var body: some View {
+        ZStack {
+            // Background
+            LinearGradient(
+                colors: [CheerUpColors.deepNavy, CheerUpColors.darkBlue],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
+                    header
+
+                    // Vertical Presentation of Mini Games & Visualizer
+                    VStack(spacing: 16) {
+                        ForEach(Array(games.enumerated()), id: \.element.game.id) { index, item in
+                            GameCardView(
+                                game: item.game,
+                                highScore: highScores[item.game] ?? 0,
+                                gradientColors: item.gradient,
+                                onSelect: { onSelectGame(item.game) }
+                            )
+                            .opacity(appeared ? 1 : 0)
+                            .offset(y: appeared ? 0 : 25)
+                            .animation(
+                                .spring(response: 0.5, dampingFraction: 0.8)
+                                    .delay(Double(index) * 0.08),
+                                value: appeared
+                            )
+                        }
+                    }
+                }
+                .padding(.horizontal, Spacing.screenPadding)
+                .padding(.top, Spacing.lg)
+                .padding(.bottom, 60)
+            }
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+        }
+        .onAppear {
+            loadScores()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                appeared = true
+            }
+        }
+    }
+
+    // MARK: - Header
+    private var header: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("CheerUp!")
+                    .font(CheerUpFont.largeTitle)
+                    .foregroundStyle(CheerUpColors.lightGrey)
+
+                Text("Your little arcade corner.")
+                    .font(CheerUpFont.body)
+                    .foregroundStyle(CheerUpColors.mutedSilver)
+            }
+
+            Spacer()
+
+            // Settings button
+            Button(action: { showSettings = true }) {
+                Image(systemName: "gearshape.fill")
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(CheerUpColors.mutedSilver)
+                    .frame(width: 40, height: 40)
+                    .background(CheerUpColors.blueGrey.opacity(0.4))
+                    .clipShape(Circle())
+            }
+            .accessibilityLabel("Settings")
+        }
+    }
+
+    private func loadScores() {
+        highScores = ScoreManager.shared.allHighScores()
+    }
+}

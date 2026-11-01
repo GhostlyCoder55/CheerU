@@ -1,0 +1,295 @@
+import SwiftUI
+
+// MARK: - TAP View
+// Full native implementation of the CheerUp! game vision:
+// Mascot speech bubble stage, instruction card with live countdown bar,
+// tactile 3D cube buttons, pixel explosion confetti, and milestone banners.
+
+struct TapView: View {
+    let onExit: () -> Void
+    @State private var engine = TapEngine()
+    @State private var timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        ZStack {
+            // Background: Pastel Gradient Palette (Soft Turquoise -> Pale Ice -> Blush Pink)
+            LinearGradient(
+                colors: CheerUpColors.Tap.bgGradient,
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            VStack(spacing: 12) {
+                // Header: Hearts (Lives), Round Pill, Close
+                topHeader
+                    .padding(.horizontal, Spacing.screenPadding)
+                    .padding(.top, Spacing.xs)
+
+                // Stage: App Mascot Cube + Speech Bubble
+                mascotStage
+                    .padding(.horizontal, Spacing.screenPadding)
+
+                // Instruction Card with Countdown Bar
+                instructionCard
+                    .padding(.horizontal, Spacing.screenPadding)
+
+                // 2x2 Tactile 3D Cube Grid
+                GeometryReader { geo in
+                    let side = min((geo.size.width - 48) / 2, (geo.size.height - 48) / 2)
+
+                    VStack(spacing: 14) {
+                        HStack(spacing: 14) {
+                            if engine.cubeOrder.count > 0 {
+                                cubeTile(cube: engine.cubeOrder[0], size: side, in: geo)
+                            }
+                            if engine.cubeOrder.count > 1 {
+                                cubeTile(cube: engine.cubeOrder[1], size: side, in: geo)
+                            }
+                        }
+
+                        HStack(spacing: 14) {
+                            if engine.cubeOrder.count > 2 {
+                                cubeTile(cube: engine.cubeOrder[2], size: side, in: geo)
+                            }
+                            if engine.cubeOrder.count > 3 {
+                                cubeTile(cube: engine.cubeOrder[3], size: side, in: geo)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .padding(.horizontal, Spacing.screenPadding)
+                .padding(.bottom, 20)
+            }
+
+            // Milestone "NEW RULE!" Banner
+            if engine.showBanner, let txt = engine.bannerText {
+                VStack(spacing: 8) {
+                    Text("NEW RULE!")
+                        .font(.system(size: 26, weight: .black, design: .rounded))
+                        .foregroundStyle(CheerUpColors.Tap.red)
+
+                    Text(txt)
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundStyle(CheerUpColors.Tap.slateCharcoal)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 20)
+                .background(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(CheerUpColors.Tap.iceWhite)
+                        .shadow(color: CheerUpColors.Tap.slateCharcoal.opacity(0.3), radius: 16, x: 0, y: 8)
+                )
+                .rotationEffect(.degrees(-2))
+                .padding(.horizontal, 28)
+                .transition(.scale.combined(with: .opacity))
+            }
+
+            // Canvas: Pixel Particle Explosion
+            Canvas { context, _ in
+                for p in engine.particles {
+                    let rect = CGRect(x: p.x - p.size / 2, y: p.y - p.size / 2, width: p.size, height: p.size)
+                    context.opacity = p.opacity
+                    context.fill(Path(rect), with: .color(p.color))
+                }
+            }
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+
+            // Game Over Result Overlay
+            if engine.isOver {
+                GameResultView(
+                    gameTitle: "TAP",
+                    score: max(0, engine.round - 1),
+                    highScore: engine.highScore,
+                    accentColor: CheerUpColors.Tap.yellow,
+                    onReplay: {
+                        engine.startGame()
+                    },
+                    onExit: onExit
+                )
+            }
+        }
+        .onAppear {
+            engine.startGame()
+        }
+        .onReceive(timer) { _ in
+            engine.tick(dt: 0.05)
+        }
+    }
+
+    // MARK: - Top Header
+    private var topHeader: some View {
+        HStack(alignment: .center) {
+            // Pixel Hearts (Lives)
+            HStack(spacing: 7) {
+                ForEach(0..<3, id: \.self) { i in
+                    PixelHeartView(isFilled: i < engine.lives, size: 22)
+                }
+            }
+            .frame(minWidth: 90, alignment: .leading)
+
+            Spacer()
+
+            // Round Badge Pill
+            Text("Round \(max(1, engine.round))")
+                .font(.system(size: 16, weight: .heavy, design: .rounded))
+                .foregroundStyle(CheerUpColors.Tap.ink)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 4)
+                .background(CheerUpColors.Tap.panel)
+                .clipShape(Capsule())
+
+            Spacer()
+
+            // Exit Button
+            Button(action: {
+                HapticsManager.shared.selection()
+                onExit()
+            }) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(CheerUpColors.Tap.ink.opacity(0.8))
+                    .frame(width: 34, height: 34)
+                    .background(CheerUpColors.Tap.panel)
+                    .clipShape(Circle())
+            }
+            .frame(minWidth: 90, alignment: .trailing)
+        }
+    }
+
+    // MARK: - Mascot Stage & Speech Bubble
+    private var mascotStage: some View {
+        HStack(spacing: 12) {
+            // CheerUp! Mascot Cube (Replaces emoji from HTML)
+            CheerUpMascotView(mood: engine.mascotMood, size: 68)
+
+            // Cheery's Speech Bubble
+            HStack {
+                Text(engine.speechText)
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundStyle(CheerUpColors.Tap.slateCharcoal)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+
+                Spacer()
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .frame(minHeight: 52)
+            .background(
+                SpeechBubbleShape()
+                    .fill(CheerUpColors.Tap.iceWhite)
+                    .shadow(color: CheerUpColors.Tap.slateCharcoal.opacity(0.18), radius: 6, x: 0, y: 3)
+            )
+        }
+    }
+
+    // MARK: - Instruction Card with Live Countdown Bar
+    private var instructionCard: some View {
+        VStack(spacing: 8) {
+            // Instruction Line with Colored Target Word
+            HStack(spacing: 6) {
+                Text(engine.instructionPrefix)
+                    .font(.system(size: 30, weight: .black, design: .rounded))
+                    .foregroundStyle(CheerUpColors.Tap.ink)
+
+                if !engine.instructionWord.isEmpty {
+                    Text(engine.instructionWord)
+                        .font(.system(size: 30, weight: .black, design: .rounded))
+                        .foregroundStyle(engine.instructionColor)
+                }
+            }
+            .minimumScaleFactor(0.75)
+            .lineLimit(1)
+            .scaleEffect(engine.isPsychAnimation ? 1.08 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.5), value: engine.isPsychAnimation)
+
+            // Tag / Subtext
+            if !engine.instructionTag.isEmpty {
+                Text(engine.instructionTag)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(CheerUpColors.Tap.yellow)
+                    .frame(height: 16)
+            } else {
+                Spacer().frame(height: 16)
+            }
+
+            // Countdown Progress Bar
+            GeometryReader { barGeo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.black.opacity(0.35))
+                        .frame(height: 10)
+
+                    Capsule()
+                        .fill(engine.progress < 0.3 ? CheerUpColors.Tap.red : CheerUpColors.Tap.yellow)
+                        .frame(width: max(0, barGeo.size.width * CGFloat(engine.progress)), height: 10)
+                }
+            }
+            .frame(height: 10)
+            .padding(.horizontal, 8)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .frame(minHeight: 110)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(CheerUpColors.Tap.panel)
+                .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+        )
+    }
+
+    // MARK: - 3D Tactile Cube Button
+    private func cubeTile(cube: TapCube, size: CGFloat, in geo: GeometryProxy) -> some View {
+        Button(action: {
+            let center = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
+            engine.selectCube(cube, tapPoint: center)
+        }) {
+            ZStack {
+                // Bottom 3D shadow block
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(Color.black.opacity(0.35))
+                    .offset(y: 7)
+
+                // Main vibrant cube face
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(cube.color)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 26, style: .continuous)
+                            .stroke(Color.white.opacity(0.18), lineWidth: 1.5)
+                    )
+            }
+            .frame(width: size, height: size)
+        }
+        .buttonStyle(CubeButtonStyle())
+        .accessibilityLabel("\(cube.name) cube")
+    }
+}
+
+// MARK: - Speech Bubble Shape (Rounded with left pointer)
+struct SpeechBubbleShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let r: CGFloat = 16
+        path.addRoundedRect(in: CGRect(x: 4, y: 0, width: rect.width - 4, height: rect.height), cornerSize: CGSize(width: r, height: r))
+        // Pointer tail toward mascot
+        path.move(to: CGPoint(x: 4, y: rect.midY - 6))
+        path.addLine(to: CGPoint(x: 0, y: rect.midY))
+        path.addLine(to: CGPoint(x: 4, y: rect.midY + 6))
+        path.closeSubpath()
+        return path
+    }
+}
+
+// MARK: - 3D Cube Press Button Style
+struct CubeButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .offset(y: configuration.isPressed ? 6 : 0)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .animation(.spring(response: 0.15, dampingFraction: 0.7), value: configuration.isPressed)
+    }
+}

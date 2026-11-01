@@ -41,3 +41,4 @@ final class CheerUp_UITests: XCTestCase {
         }
     }
 }
+
