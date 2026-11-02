@@ -35,6 +35,8 @@ struct TapPixelParticle: Identifiable {
     var y: CGFloat
     var vx: CGFloat
     var vy: CGFloat
+    var rotation: Double
+    var vr: Double
     var size: CGFloat
     var color: Color
     var opacity: Double

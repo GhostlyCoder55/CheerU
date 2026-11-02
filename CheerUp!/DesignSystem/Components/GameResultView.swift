@@ -30,7 +30,7 @@ struct GameResultView: View {
 
                 // Score Section
                 VStack(spacing: Spacing.sm) {
-                    Text("FINAL SCORE")
+                    Text(LanguageManager.shared.tr("FINAL SCORE", "SCORE FINAL"))
                         .font(CheerUpFont.caption)
                         .foregroundStyle(CheerUpColors.mutedSilver)
                         .tracking(2)
@@ -41,7 +41,7 @@ struct GameResultView: View {
                         .contentTransition(.numericText())
 
                     if isNewHighScore {
-                        Label("NEW BEST!", systemImage: "star.fill")
+                        Label(LanguageManager.shared.tr("NEW BEST!", "NOUVEAU RECORD !"), systemImage: "star.fill")
                             .font(CheerUpFont.caption)
                             .foregroundStyle(.yellow)
                             .padding(.horizontal, Spacing.md)
@@ -57,15 +57,15 @@ struct GameResultView: View {
                     Image(systemName: "trophy.fill")
                         .foregroundStyle(CheerUpColors.mutedSilver)
                         .font(.system(size: 14))
-                    Text("Best: \(max(score, highScore))")
+                    Text("\(LanguageManager.shared.tr("Best", "Record")): \(max(score, highScore))")
                         .font(CheerUpFont.callout)
                         .foregroundStyle(CheerUpColors.mutedSilver)
                 }
 
                 // Action Buttons
                 VStack(spacing: Spacing.md) {
-                    CheerUpPrimaryButton("Play Again", icon: "arrow.clockwise", action: onReplay)
-                    CheerUpSecondaryButton("Arcade", icon: "square.grid.2x2.fill", action: onExit)
+                    CheerUpPrimaryButton(LanguageManager.shared.tr("Play Again", "Rejouer"), icon: "arrow.clockwise", action: onReplay)
+                    CheerUpSecondaryButton(LanguageManager.shared.tr("Arcade", "Arcade"), icon: "square.grid.2x2.fill", action: onExit)
                 }
             }
             .padding(Spacing.xxl)
@@ -88,7 +88,6 @@ struct GameResultView: View {
                 displayedScore = score
                 scoreRevealed = true
                 if isNewHighScore {
-                    AudioManager.shared.play(.win)
                     HapticsManager.shared.success()
                 }
                 return
@@ -102,7 +101,6 @@ struct GameResultView: View {
                         displayedScore = score
                         scoreRevealed = true
                         if isNewHighScore {
-                            AudioManager.shared.play(.win)
                             HapticsManager.shared.success()
                         }
                     }

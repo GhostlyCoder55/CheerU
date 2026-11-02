@@ -11,8 +11,8 @@ final class TradeOffEngine {
     var isCheap: Bool = false
 
     var sacrificedValue: TradeOffValue? = nil
-    var statement: String = "THE CONSTRAINT"
-    var lessonDetail: String = "Choose carefully. One value must always be sacrificed."
+    var statement: String = LanguageManager.shared.tr("PICK TWO", "CHOISISSEZ DEUX")
+    var lessonDetail: String = LanguageManager.shared.tr("One value is always sacrificed.", "Une valeur est toujours sacrifiée.")
 
     func toggle(_ value: TradeOffValue) {
         let turningOn: Bool
@@ -60,37 +60,39 @@ final class TradeOffEngine {
     }
 
     private func updateLesson() {
+        let isFr = LanguageManager.shared.isFrench
         if isFast && isGood {
-            statement = "FAST & GOOD"
-            lessonDetail = "High quality delivered quickly. It will be expensive (CHEAP sacrificed)."
+            statement = isFr ? "RAPIDE & BON" : "FAST & GOOD"
+            lessonDetail = isFr ? "Super et rapide, mais cher." : "Great and fast, but expensive."
         } else if isGood && isCheap {
-            statement = "GOOD & CHEAP"
-            lessonDetail = "Affordable and crafted with care. It will take time (FAST sacrificed)."
+            statement = isFr ? "BON & PAS CHER" : "GOOD & CHEAP"
+            lessonDetail = isFr ? "Super et pas cher, mais lent." : "Great and cheap, but slow."
         } else if isFast && isCheap {
-            statement = "FAST & CHEAP"
-            lessonDetail = "Speedy and budget-friendly. Quality will suffer (GOOD sacrificed)."
+            statement = isFr ? "RAPIDE & PAS CHER" : "FAST & CHEAP"
+            lessonDetail = isFr ? "Rapide et pas cher, mais médiocre." : "Fast and cheap, but low quality."
         } else if isFast {
-            statement = "ONLY FAST"
-            lessonDetail = "Pure speed without quality or budget control leads to rushed waste."
+            statement = isFr ? "JUSTE RAPIDE" : "ONLY FAST"
+            lessonDetail = isFr ? "La vitesse seule crée des erreurs." : "Speed alone leads to rushed mistakes."
         } else if isGood {
-            statement = "ONLY GOOD"
-            lessonDetail = "Perfection in a vacuum requires unlimited patience or endless money."
+            statement = isFr ? "JUSTE BON" : "ONLY GOOD"
+            lessonDetail = isFr ? "La qualité seule prend du temps." : "Quality alone takes forever or costs a fortune."
         } else if isCheap {
-            statement = "ONLY CHEAP"
-            lessonDetail = "Low cost alone means slow delivery and compromised standards."
+            statement = isFr ? "JUSTE PAS CHER" : "ONLY CHEAP"
+            lessonDetail = isFr ? "Le pas cher seul est lent et bâclé." : "Cheap alone means slow delivery and poor quality."
         } else {
-            statement = "THE CONSTRAINT"
-            lessonDetail = "Choose carefully. One value must always be sacrificed."
+            statement = isFr ? "CHOISISSEZ DEUX" : "PICK TWO"
+            lessonDetail = isFr ? "Une valeur est toujours sacrifiée." : "One value is always sacrificed."
         }
     }
 
     func reset() {
+        let isFr = LanguageManager.shared.isFrench
         isFast = false
         isGood = false
         isCheap = false
         sacrificedValue = nil
-        statement = "THE CONSTRAINT"
-        lessonDetail = "Choose carefully. One value must always be sacrificed."
+        statement = isFr ? "CHOISISSEZ DEUX" : "PICK TWO"
+        lessonDetail = isFr ? "Une valeur est toujours sacrifiée." : "One value is always sacrificed."
         AudioManager.shared.play(.switchOff)
     }
 }

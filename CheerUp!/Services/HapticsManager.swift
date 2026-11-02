@@ -53,6 +53,20 @@ final class HapticsManager {
         generator.impactOccurred()
     }
 
+    /// Flexible impact feedback
+    func impact(style: UIImpactFeedbackGenerator.FeedbackStyle = .medium) {
+        guard isEnabled, supportsHaptics else { return }
+        let generator = UIImpactFeedbackGenerator(style: style)
+        generator.impactOccurred()
+    }
+
+    /// Flexible notification feedback
+    func notification(type: UINotificationFeedbackGenerator.FeedbackType = .success) {
+        guard isEnabled, supportsHaptics else { return }
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(type)
+    }
+
     /// Success — round complete, high score
     func success() {
         guard isEnabled, supportsHaptics else { return }

@@ -48,23 +48,32 @@ final class TapEngine {
         TapCube(id: 3, name: "YELLOW", color: CheerUpColors.Tap.yellow, hex: 0xFFC83D)
     ]
 
-    private let cheers = [
-        "Nice!", "Boom!", "Smooth.", "Yes yes yes!", "Look at you go.",
-        "Chef's kiss.", "Easy peasy.", "You're on fire!", "Wheee!", "Brain: activated."
-    ]
+    private let cubesFr = ["ROUGE", "BLEU", "VERT", "JAUNE"]
 
-    private let oopsMessages = [
-        "Oof.", "Colours are hard, okay?", "I believed in you.",
-        "That's a no from me.", "Plot twist: wrong.", "Almost! (Not really.)"
-    ]
+    private func cubeName(for id: Int) -> String {
+        LanguageManager.shared.isFrench ? cubesFr[id] : cubes[id].name
+    }
 
-    private let milestones: [Int: (rule: TapRuleType, text: String)] = [
-        5: (.not, "Plot twist: some colours are now banned."),
-        7: (.ink, "Words can lie about their colour. Rude."),
-        10: (.prev, "Memory test. Don't blink."),
-        15: (.lie, "The instructions have started lying to you."),
-        20: (.speed, "Everything speeds up. Good luck, legend.")
-    ]
+    private var cheers: [String] {
+        LanguageManager.shared.isFrench
+            ? ["Bravo !", "Top !", "Super !", "Génial !", "Parfait !"]
+            : ["Nice!", "Boom!", "Smooth.", "Yes yes yes!", "Look at you go."]
+    }
+
+    private var oopsMessages: [String] {
+        LanguageManager.shared.isFrench
+            ? ["Oups.", "Pas facile !", "Presque !", "Aïe."]
+            : ["Oof.", "Colours are hard, okay?", "I believed in you.", "That's a no from me."]
+    }
+
+    private var milestones: [Int: (rule: TapRuleType, text: String)] {
+        [
+            6: (.ink, LanguageManager.shared.tr("Follow the ink color!", "Suivez la couleur de l'encre !")),
+            12: (.not, LanguageManager.shared.tr("Some colors are now banned!", "Des couleurs sont bannies !")),
+            18: (.prev, LanguageManager.shared.tr("Memory test. Don't blink!", "Test mémoire. Attention !")),
+            25: (.lie, LanguageManager.shared.tr("Watch out for psychs!", "Attention aux pièges !"))
+        ]
+    }
 
     init() {
         self.highScore = ScoreManager.shared.highScore(for: .tap)
@@ -80,7 +89,7 @@ final class TapEngine {
         lastTargetColorId = nil
         particles = []
         mascotMood = .happy
-        speechText = "Let's go! Tap fast, think faster."
+        speechText = LanguageManager.shared.tr("Let's go! Tap fast, think faster.", "C'est parti ! Touchez vite.")
         AudioManager.shared.play(.pop)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
@@ -115,18 +124,25 @@ final class TapEngine {
         guard !isOver else { return }
 
         // Choose rule based on round progression
-        var pool: [TapRuleType] = [.tap, .tap]
-        if round >= 5 { pool.append(.not) }
-        if round >= 7 { pool.append(.ink) }
-        if round >= 10 && lastTargetColorId != nil { pool.append(.prev) }
-        if round >= 15 { pool.append(.lie) }
+        // Removing "select color name" — choosing the ink color carries the color task!
+        var pool: [TapRuleType] = []
+        if round < 6 {
+            pool = [.tap] // Warm-up: word and ink color match
+        } else {
+            // Primarily choosing the ink color
+            pool = [.ink, .ink, .ink, .ink]
+            if round >= 12 { pool.append(.not); pool.append(.not) }
+            // Make "last round's color" rare (low probability slot in expanded pool)
+            if round >= 18 && lastTargetColorId != nil { pool.append(.prev) }
+            if round >= 25 { pool.append(.lie) }
+        }
 
         var rule = forcedRule ?? (round == 1 ? .tap : pool.randomElement()!)
         if rule == .speed { rule = pool.randomElement()! }
-        if rule == .prev && lastTargetColorId == nil { rule = .tap }
+        if rule == .prev && lastTargetColorId == nil { rule = round < 6 ? .tap : .ink }
 
-        // Shuffle grid order if round >= 12
-        if round >= 12 {
+        // Shuffle grid order only on higher levels (round 20+)
+        if round >= 20 {
             cubeOrder = cubes.shuffled()
         } else {
             cubeOrder = cubes
@@ -138,15 +154,15 @@ final class TapEngine {
 
         switch rule {
         case .tap:
-            instructionPrefix = "Tap"
-            instructionWord = cubes[targetId].name
+            instructionPrefix = LanguageManager.shared.tr("Tap", "Touchez")
+            instructionWord = cubeName(for: targetId)
             instructionColor = cubes[targetId].color
             isCorrectAnswer = { [weak self] c in c == targetId }
             lastTargetColorId = targetId
 
         case .not:
-            instructionPrefix = "Anything but"
-            instructionWord = cubes[targetId].name
+            instructionPrefix = LanguageManager.shared.tr("Anything but", "Sauf")
+            instructionWord = cubeName(for: targetId)
             instructionColor = cubes[targetId].color
             isCorrectAnswer = { [weak self] c in c != targetId }
             lastTargetColorId = targetId
@@ -154,21 +170,21 @@ final class TapEngine {
 
         case .ink:
             let inkId = (targetId + 1 + Int.random(in: 0..<3)) % 4
-            instructionPrefix = "Tap the ink:"
-            instructionWord = cubes[targetId].name
+            instructionPrefix = LanguageManager.shared.tr("Tap the ink:", "L'encre :")
+            instructionWord = cubeName(for: targetId)
             instructionColor = cubes[inkId].color
             isCorrectAnswer = { [weak self] c in c == inkId }
             lastTargetColorId = inkId
-            extraTime = 0.7
+            extraTime = 0.6
 
         case .prev:
             let prevId = lastTargetColorId ?? targetId
-            instructionPrefix = "Tap last round's"
-            instructionWord = "COLOUR"
+            instructionPrefix = LanguageManager.shared.tr("Tap last round's", "Dernière")
+            instructionWord = LanguageManager.shared.tr("COLOR", "COULEUR")
             instructionColor = .white
-            instructionTag = "(No peeking. There's nothing to peek at.)"
+            instructionTag = ""
             isCorrectAnswer = { [weak self] c in c == prevId }
-            extraTime = 0.9
+            extraTime = 2.0
 
         case .lie:
             lieFakeId = (targetId + 1 + Int.random(in: 0..<3)) % 4
@@ -180,27 +196,24 @@ final class TapEngine {
             break
         }
 
-        // Calculate time limit
-        var lim = round == 1 ? 5.0 : max(1.25, 3.6 - Double(round) * 0.07) + extraTime
-        if round >= 20 {
-            lim = max(0.85, lim * 0.75 - Double(round - 20) * 0.03)
-        }
-        timeLimit = lim
+        // Calculate time limit — gentler curve, difficulty rises slower, and higher levels retain comfortable time
+        let baseTime = round == 1 ? 5.5 : max(2.0, 4.4 - Double(round) * 0.04)
+        timeLimit = baseTime + extraTime
         timeElapsed = 0
         progress = 1.0
 
         if let fakeId = lieFakeId {
             // Psych-out mechanic!
-            instructionPrefix = "Tap"
-            instructionWord = cubes[fakeId].name
+            instructionPrefix = LanguageManager.shared.tr("Tap", "Touchez")
+            instructionWord = cubeName(for: fakeId)
             instructionColor = cubes[fakeId].color
             isLive = false
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { [weak self] in
                 guard let self, !self.isOver else { return }
-                self.instructionWord = self.cubes[targetId].name
+                self.instructionWord = self.cubeName(for: targetId)
                 self.instructionColor = self.cubes[targetId].color
-                self.instructionTag = "Psych! 😜"
+                self.instructionTag = LanguageManager.shared.tr("Psych!", "Raté !")
                 self.isPsychAnimation = true
                 AudioManager.shared.play(.switchToggle)
 
@@ -215,10 +228,10 @@ final class TapEngine {
         guard isLive, !isOver else { return }
         isLive = false
 
-        spawnPixelBurst(at: tapPoint, color: cube.color)
-
         if let isCorrect = isCorrectAnswer, isCorrect(cube.id) {
-            // Correct!
+            // Correct! Spawn celebratory confetti in Wheels style
+            spawnConfetti(at: tapPoint, color: cube.color)
+
             streak += 1
             if streak % 5 == 0 {
                 AudioManager.shared.play(.combo)
@@ -236,7 +249,7 @@ final class TapEngine {
                 self?.nextRound()
             }
         } else {
-            // Wrong!
+            // Wrong! No confetti when picking the wrong color
             handleMistake(say: oopsMessages.randomElement()!)
         }
     }
@@ -262,12 +275,13 @@ final class TapEngine {
     }
 
     func tick(dt: Double = 0.05) {
-        // Update pixel particles
+        // Update confetti particles with rotation & gravity matching Wheels style
         for i in particles.indices {
             particles[i].x += particles[i].vx * CGFloat(dt)
             particles[i].y += particles[i].vy * CGFloat(dt)
-            particles[i].vy += 450 * CGFloat(dt) // gravity
-            particles[i].opacity -= dt * 1.8
+            particles[i].vy += 420 * CGFloat(dt) // gravity
+            particles[i].rotation += particles[i].vr * 28 * dt
+            particles[i].opacity -= dt * 1.5
         }
         particles.removeAll(where: { $0.opacity <= 0 })
 
@@ -278,25 +292,36 @@ final class TapEngine {
 
         if progress <= 0 {
             isLive = false
-            handleMistake(say: "Too slow! The colours got bored.")
+            handleMistake(say: LanguageManager.shared.tr("Too slow! The colours got bored.", "Trop lent ! Les couleurs s'ennuient."))
         }
     }
 
-    private func spawnPixelBurst(at point: CGPoint, color: Color) {
+    private func spawnConfetti(at point: CGPoint, color: Color) {
+        let palette = [
+            color,
+            color,
+            Color.white,
+            Color(hex: 0xFFC83D), // Yellow
+            Color(hex: 0x2EDB8A), // Green
+            Color(hex: 0x3D7BFF), // Blue
+            Color(hex: 0xFF4B5C)  // Red
+        ]
         var newParticles: [TapPixelParticle] = []
-        for _ in 0..<32 {
+        for _ in 0..<36 {
             let angle = Double.random(in: 0...(2 * .pi))
-            let speed = CGFloat.random(in: 90...320)
+            let speed = CGFloat.random(in: 120...360)
             let vx = cos(angle) * speed
-            let vy = sin(angle) * speed - CGFloat.random(in: 40...100)
+            let vy = sin(angle) * speed - CGFloat.random(in: 60...160)
 
             newParticles.append(TapPixelParticle(
                 x: point.x,
                 y: point.y,
                 vx: vx,
                 vy: vy,
-                size: CGFloat.random(in: 6...12),
-                color: Bool.random() ? color : .white,
+                rotation: Double.random(in: 0...360),
+                vr: Double.random(in: -10...10),
+                size: CGFloat.random(in: 8...15),
+                color: palette.randomElement() ?? color,
                 opacity: 1.0
             ))
         }
@@ -307,7 +332,6 @@ final class TapEngine {
         let sc = max(0, round - 1)
         ScoreManager.shared.updateHighScore(for: .tap, score: sc)
         highScore = ScoreManager.shared.highScore(for: .tap)
-        AudioManager.shared.play(.lose)
         HapticsManager.shared.heavyImpact()
     }
 }

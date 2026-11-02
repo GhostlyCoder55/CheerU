@@ -14,50 +14,16 @@ struct GameIconArt: View {
                 tapIconArtwork
             case .tradeOff:
                 tradeOffIconArtwork
+            case .wheels:
+                wheelsIconArtwork
             }
         }
         .frame(width: size, height: size)
     }
 
-    // MARK: - 1. TAP Icon: Tactile CheerUp! Mascot Cube with Sparkles
+    // MARK: - 1. TAP Icon: Canonical CheerUp! Mascot Cube
     private var tapIconArtwork: some View {
-        ZStack {
-            // Mascot Cube Background
-            RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [Color(hex: 0x00A896), Color(hex: 0x028090)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: size * 0.78, height: size * 0.78)
-                .shadow(color: Color(hex: 0x00A896).opacity(0.4), radius: 6, x: 0, y: 3)
-
-            // Top specular shine
-            RoundedRectangle(cornerRadius: size * 0.08, style: .continuous)
-                .fill(Color.white.opacity(0.25))
-                .frame(width: size * 0.22, height: size * 0.12)
-                .offset(x: size * 0.20, y: -size * 0.24)
-
-            // Mascot Face: Two vertical rectangular pill eyes & smile
-            VStack(spacing: size * 0.08) {
-                HStack(spacing: size * 0.12) {
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(Color.black)
-                        .frame(width: size * 0.10, height: size * 0.22)
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(Color.black)
-                        .frame(width: size * 0.10, height: size * 0.22)
-                }
-
-                // Square smile path
-                MascotSmileShape()
-                    .stroke(Color.black, style: StrokeStyle(lineWidth: size * 0.09, lineCap: .square, lineJoin: .miter))
-                    .frame(width: size * 0.32, height: size * 0.12)
-            }
-            .offset(y: size * 0.02)
-        }
+        CheerUpMascotView(mood: .happy, size: size * 0.82)
     }
 
     // MARK: - 2. TRADE OFF Icon: Dual mechanical sliders with glowing knobs
@@ -111,16 +77,53 @@ struct GameIconArt: View {
             )
         }
     }
-}
 
-// MARK: - Mascot Smile Shape
-struct MascotSmileShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
-        return path
+    // MARK: - 3. WHEELS Icon: Miniature Animated Spinning Wheel with Pointer & Hub
+    private var wheelsIconArtwork: some View {
+        ZStack {
+            // Wheel outer shadow
+            Circle()
+                .fill(Color.black.opacity(0.3))
+                .frame(width: size * 0.82, height: size * 0.82)
+                .offset(y: size * 0.05)
+
+            // Outer Wheel with Conic Angular Gradient
+            Circle()
+                .fill(
+                    AngularGradient(
+                        colors: [
+                            Color(hex: 0xF4470B), Color(hex: 0xF7BD18),
+                            Color(hex: 0x00919B), Color(hex: 0x7500C8),
+                            Color(hex: 0xDF2955), Color(hex: 0x3B82F6),
+                            Color(hex: 0x22C55E), Color(hex: 0xFF7AB6),
+                            Color(hex: 0xF4470B)
+                        ],
+                        center: .center
+                    )
+                )
+                .frame(width: size * 0.80, height: size * 0.80)
+                .overlay(
+                    Circle()
+                        .stroke(Color.white.opacity(0.35), lineWidth: 2)
+                )
+
+            // Inner dark hub
+            Circle()
+                .fill(Color(hex: 0x242033))
+                .frame(width: size * 0.28, height: size * 0.28)
+                .overlay(
+                    Circle()
+                        .fill(Color(hex: 0xFF470B))
+                        .frame(width: size * 0.12, height: size * 0.12)
+                )
+                .shadow(color: Color.black.opacity(0.4), radius: 3)
+
+            // Top Indicator Needle / Pointer
+            Image(systemName: "arrowtriangle.down.fill")
+                .font(.system(size: size * 0.22))
+                .foregroundStyle(Color.white)
+                .shadow(color: Color.black.opacity(0.4), radius: 2, y: 1)
+                .offset(y: -size * 0.38)
+        }
     }
 }

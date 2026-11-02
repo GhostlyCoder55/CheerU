@@ -13,9 +13,9 @@ struct GameIntroView: View {
 
     var body: some View {
         ZStack {
-            // Background
+            // Background: Dark Slate Gradient Palette (#253745 -> #11212D -> #06141B)
             LinearGradient(
-                colors: [CheerUpColors.deepNavy, CheerUpColors.darkBlue],
+                colors: CheerUpColors.backgroundGradient,
                 startPoint: .top,
                 endPoint: .bottom
             )
@@ -59,13 +59,13 @@ struct GameIntroView: View {
                         .frame(maxWidth: 300)
 
                     // High score (for games with scoring)
-                    if game != .tradeOff {
+                    if game.isGame {
                         let hs = ScoreManager.shared.highScore(for: game)
                         if hs > 0 {
                             HStack(spacing: 6) {
                                 Image(systemName: "trophy.fill")
                                     .font(.system(size: 13))
-                                Text("Best: \(hs)")
+                                Text("\(LanguageManager.shared.tr("Best", "Record")): \(hs)")
                                     .font(CheerUpFont.callout)
                             }
                             .foregroundStyle(Color.yellow.opacity(0.9))
@@ -81,11 +81,11 @@ struct GameIntroView: View {
                 // Action Buttons
                 VStack(spacing: Spacing.md) {
                     CheerUpPrimaryButton(
-                        game == .tradeOff ? "Open Exhibit" : "Play",
-                        icon: game == .tradeOff ? "slider.horizontal.3" : "play.fill",
+                        !game.isGame ? LanguageManager.shared.tr("Open Exhibit", "Ouvrir") : LanguageManager.shared.tr("Play", "Jouer"),
+                        icon: !game.isGame ? "slider.horizontal.3" : "play.fill",
                         action: onPlay
                     )
-                    CheerUpSecondaryButton("Back", icon: "chevron.left", action: onBack)
+                    CheerUpSecondaryButton(LanguageManager.shared.tr("Back", "Retour"), icon: "chevron.left", action: onBack)
                 }
                 .padding(.horizontal, Spacing.xl)
                 .opacity(appeared ? 1 : 0)

@@ -10,9 +10,13 @@ struct TradeOffView: View {
 
     var body: some View {
         ZStack {
-            // Background
-            CheerUpColors.TradeOff.background
-                .ignoresSafeArea()
+            // Background: Dark Slate Gradient Palette (#253745 -> #11212D -> #06141B)
+            LinearGradient(
+                colors: CheerUpColors.backgroundGradient,
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // Top Navigation Bar
@@ -24,12 +28,12 @@ struct TradeOffView: View {
 
                 // Exhibit Header
                 VStack(spacing: 8) {
-                    Text("THE TRADE OFF")
+                    Text("TRADE OFF")
                         .font(.system(size: 34, weight: .heavy, design: .rounded))
                         .foregroundStyle(Color.white)
                         .tracking(3)
 
-                    Text("AN INTERACTIVE CONSTRAINT")
+                    Text(LanguageManager.shared.tr("PICK TWO", "CHOISISSEZ DEUX"))
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundStyle(Color.white.opacity(0.45))
                         .tracking(2)
@@ -65,7 +69,7 @@ struct TradeOffView: View {
                         .padding(.horizontal, 48)
                         .padding(.vertical, 4)
 
-                    Text("Choose carefully. One value must always be sacrificed.")
+                    Text(LanguageManager.shared.tr("One value must always be sacrificed.", "Une valeur est toujours sacrifiée."))
                         .font(.system(size: 13, weight: .regular, design: .rounded))
                         .foregroundStyle(Color.white.opacity(0.45))
                         .italic()
@@ -84,17 +88,17 @@ struct TradeOffView: View {
             }) {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Color.white.opacity(0.75))
+                    .foregroundStyle(CheerUpColors.lightGrey.opacity(0.85))
                     .frame(width: 36, height: 36)
-                    .background(Color.white.opacity(0.1))
+                    .background(CheerUpColors.blueGrey.opacity(0.6))
                     .clipShape(Circle())
             }
 
             Spacer()
 
-            Text("VISUALIZER")
+            Text(LanguageManager.shared.tr("VISUALIZER", "SIMULATEUR"))
                 .font(.system(size: 11, weight: .black, design: .rounded))
-                .foregroundStyle(Color.white.opacity(0.4))
+                .foregroundStyle(CheerUpColors.mutedSilver.opacity(0.6))
                 .tracking(2)
 
             Spacer()
@@ -107,9 +111,9 @@ struct TradeOffView: View {
             }) {
                 Image(systemName: "arrow.counterclockwise")
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(Color.white.opacity(0.75))
+                    .foregroundStyle(CheerUpColors.lightGrey.opacity(0.85))
                     .frame(width: 36, height: 36)
-                    .background(Color.white.opacity(0.1))
+                    .background(CheerUpColors.blueGrey.opacity(0.6))
                     .clipShape(Circle())
             }
         }

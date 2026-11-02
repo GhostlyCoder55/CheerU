@@ -5,6 +5,7 @@ import SwiftUI
 struct SettingsView: View {
     @State private var soundEnabled: Bool = AudioManager.shared.isEnabled
     @State private var hapticsEnabled: Bool = HapticsManager.shared.isEnabled
+    @State private var languageManager = LanguageManager.shared
 
     var body: some View {
         NavigationStack {
@@ -14,55 +15,51 @@ struct SettingsView: View {
                 List {
                     Section {
                         Toggle(isOn: $soundEnabled) {
-                            Label("Sound Effects", systemImage: "speaker.wave.2.fill")
+                            Label(languageManager.tr("Sound Effects", "Sons"), systemImage: "speaker.wave.2.fill")
                         }
                         .onChange(of: soundEnabled) { _, newValue in
                             AudioManager.shared.setEnabled(newValue)
                         }
 
                         Toggle(isOn: $hapticsEnabled) {
-                            Label("Haptic Feedback", systemImage: "hand.tap.fill")
+                            Label(languageManager.tr("Haptic Feedback", "Vibrations"), systemImage: "hand.tap.fill")
                         }
                         .onChange(of: hapticsEnabled) { _, newValue in
                             HapticsManager.shared.setEnabled(newValue)
                         }
                     } header: {
-                        Text("PREFERENCES")
+                        Text(languageManager.tr("PREFERENCES", "PRÉFÉRENCES"))
                     }
 
                     Section {
-                        Button(role: .destructive) {
-                            resetScores()
+                        Picker(selection: $languageManager.currentLanguage) {
+                            ForEach(AppLanguage.allCases) { lang in
+                                Text(lang.displayName).tag(lang)
+                            }
                         } label: {
-                            Label("Reset All High Scores", systemImage: "trash")
+                            Label(languageManager.tr("Language", "Langue"), systemImage: "globe")
                         }
+                        .pickerStyle(.menu)
                     } header: {
-                        Text("DATA")
+                        Text(languageManager.tr("LANGUAGE", "LANGUE"))
                     }
 
                     Section {
                         HStack {
-                            Text("Version")
+                            Text(languageManager.tr("Version", "Version"))
                             Spacer()
                             Text("2.0")
                                 .foregroundStyle(CheerUpColors.mutedSilver)
                         }
                     } header: {
-                        Text("ABOUT")
+                        Text(languageManager.tr("ABOUT", "À PROPOS"))
                     }
                 }
                 .scrollContentBackground(.hidden)
             }
-            .navigationTitle("Settings")
+            .navigationTitle(languageManager.tr("Settings", "Réglages"))
             .navigationBarTitleDisplayMode(.inline)
         }
         .tint(CheerUpColors.lightGrey)
-    }
-
-    private func resetScores() {
-        for game in GameIdentifier.allCases {
-            UserDefaults.standard.removeObject(forKey: "cheerup.highscore.\(game.rawValue)")
-        }
-        HapticsManager.shared.success()
     }
 }

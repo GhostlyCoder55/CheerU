@@ -20,8 +20,12 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
-            CheerUpColors.deepNavy
-                .ignoresSafeArea()
+            LinearGradient(
+                colors: CheerUpColors.backgroundGradient,
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
 
             ArcadeRootView(appState: appState)
                 .opacity(isShowingLaunchScreen ? 0 : 1)
@@ -49,8 +53,12 @@ struct LaunchScreenView: View {
 
     var body: some View {
         ZStack {
-            CheerUpColors.deepNavy
-                .ignoresSafeArea()
+            LinearGradient(
+                colors: CheerUpColors.backgroundGradient,
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
 
             Image("AppLogo")
                 .resizable()
@@ -78,12 +86,17 @@ struct ArcadeRootView: View {
     private let gradients: [GameIdentifier: [Color]] = [
         .tap:      CheerUpColors.GameGradient.tap,
         .tradeOff: CheerUpColors.GameGradient.tradeOff,
+        .wheels:   CheerUpColors.GameGradient.wheels,
     ]
 
     var body: some View {
         ZStack {
-            CheerUpColors.deepNavy
-                .ignoresSafeArea()
+            LinearGradient(
+                colors: CheerUpColors.backgroundGradient,
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
 
             if appState.isPlayingGame, let game = appState.selectedGame {
                 // Active Gameplay / Exhibit
@@ -119,6 +132,8 @@ struct ArcadeRootView: View {
             TapView(onExit: { appState.exitToArcade() })
         case .tradeOff:
             TradeOffView(onExit: { appState.exitToArcade() })
+        case .wheels:
+            WheelsView(onExit: { appState.exitToArcade() })
         }
     }
 }

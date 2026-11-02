@@ -12,7 +12,7 @@ struct TapView: View {
 
     var body: some View {
         ZStack {
-            // Background: Pastel Gradient Palette (Soft Turquoise -> Pale Ice -> Blush Pink)
+            // Background: Dark Slate Gradient Palette (#253745 -> #11212D -> #06141B)
             LinearGradient(
                 colors: CheerUpColors.Tap.bgGradient,
                 startPoint: .top,
@@ -66,33 +66,36 @@ struct TapView: View {
             // Milestone "NEW RULE!" Banner
             if engine.showBanner, let txt = engine.bannerText {
                 VStack(spacing: 8) {
-                    Text("NEW RULE!")
+                    Text(LanguageManager.shared.tr("NEW RULE!", "NOUVELLE RÈGLE !"))
                         .font(.system(size: 26, weight: .black, design: .rounded))
                         .foregroundStyle(CheerUpColors.Tap.red)
 
                     Text(txt)
                         .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundStyle(CheerUpColors.Tap.slateCharcoal)
+                        .foregroundStyle(CheerUpColors.deepNavy)
                         .multilineTextAlignment(.center)
                 }
                 .padding(.horizontal, 24)
                 .padding(.vertical, 20)
                 .background(
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(CheerUpColors.Tap.iceWhite)
-                        .shadow(color: CheerUpColors.Tap.slateCharcoal.opacity(0.3), radius: 16, x: 0, y: 8)
+                        .fill(CheerUpColors.lightGrey)
+                        .shadow(color: Color.black.opacity(0.4), radius: 16, x: 0, y: 8)
                 )
                 .rotationEffect(.degrees(-2))
                 .padding(.horizontal, 28)
                 .transition(.scale.combined(with: .opacity))
             }
 
-            // Canvas: Pixel Particle Explosion
+            // Canvas: Wheels-style Confetti Explosion
             Canvas { context, _ in
                 for p in engine.particles {
-                    let rect = CGRect(x: p.x - p.size / 2, y: p.y - p.size / 2, width: p.size, height: p.size)
-                    context.opacity = p.opacity
-                    context.fill(Path(rect), with: .color(p.color))
+                    var copy = context
+                    copy.opacity = p.opacity
+                    copy.translateBy(x: p.x, y: p.y)
+                    copy.rotate(by: Angle(degrees: p.rotation))
+                    let rect = CGRect(x: -p.size / 2, y: -p.size * 0.325, width: p.size, height: p.size * 0.65)
+                    copy.fill(Path(rect), with: .color(p.color))
                 }
             }
             .ignoresSafeArea()
@@ -120,41 +123,41 @@ struct TapView: View {
         }
     }
 
-    // MARK: - Top Header
+    // MARK: - Top Header (Exit Button on Left, Hearts on Right)
     private var topHeader: some View {
         HStack(alignment: .center) {
-            // Pixel Hearts (Lives)
-            HStack(spacing: 7) {
-                ForEach(0..<3, id: \.self) { i in
-                    PixelHeartView(isFilled: i < engine.lives, size: 22)
-                }
-            }
-            .frame(minWidth: 90, alignment: .leading)
-
-            Spacer()
-
-            // Round Badge Pill
-            Text("Round \(max(1, engine.round))")
-                .font(.system(size: 16, weight: .heavy, design: .rounded))
-                .foregroundStyle(CheerUpColors.Tap.ink)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 4)
-                .background(CheerUpColors.Tap.panel)
-                .clipShape(Capsule())
-
-            Spacer()
-
-            // Exit Button
+            // Exit Button (Left)
             Button(action: {
                 HapticsManager.shared.selection()
                 onExit()
             }) {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(CheerUpColors.Tap.ink.opacity(0.8))
-                    .frame(width: 34, height: 34)
-                    .background(CheerUpColors.Tap.panel)
+                    .foregroundStyle(CheerUpColors.Tap.ink.opacity(0.9))
+                    .frame(width: 36, height: 36)
+                    .background(CheerUpColors.Tap.pill)
                     .clipShape(Circle())
+            }
+            .frame(minWidth: 90, alignment: .leading)
+
+            Spacer()
+
+            // Round Badge Pill (Center)
+            Text("\(LanguageManager.shared.tr("Round", "Tour")) \(max(1, engine.round))")
+                .font(.system(size: 16, weight: .heavy, design: .rounded))
+                .foregroundStyle(CheerUpColors.Tap.ink)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 5)
+                .background(CheerUpColors.Tap.pill)
+                .clipShape(Capsule())
+
+            Spacer()
+
+            // Pixel Hearts (Lives) (Right)
+            HStack(spacing: 7) {
+                ForEach(0..<3, id: \.self) { i in
+                    PixelHeartView(isFilled: i < engine.lives, size: 22)
+                }
             }
             .frame(minWidth: 90, alignment: .trailing)
         }
@@ -170,7 +173,7 @@ struct TapView: View {
             HStack {
                 Text(engine.speechText)
                     .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundStyle(CheerUpColors.Tap.slateCharcoal)
+                    .foregroundStyle(CheerUpColors.deepNavy)
                     .lineLimit(2)
                     .minimumScaleFactor(0.85)
 
@@ -181,8 +184,8 @@ struct TapView: View {
             .frame(minHeight: 52)
             .background(
                 SpeechBubbleShape()
-                    .fill(CheerUpColors.Tap.iceWhite)
-                    .shadow(color: CheerUpColors.Tap.slateCharcoal.opacity(0.18), radius: 6, x: 0, y: 3)
+                    .fill(CheerUpColors.lightGrey)
+                    .shadow(color: Color.black.opacity(0.3), radius: 6, x: 0, y: 3)
             )
         }
     }
@@ -193,16 +196,16 @@ struct TapView: View {
             // Instruction Line with Colored Target Word
             HStack(spacing: 6) {
                 Text(engine.instructionPrefix)
-                    .font(.system(size: 30, weight: .black, design: .rounded))
+                    .font(.system(size: 27, weight: .black, design: .rounded))
                     .foregroundStyle(CheerUpColors.Tap.ink)
 
                 if !engine.instructionWord.isEmpty {
                     Text(engine.instructionWord)
-                        .font(.system(size: 30, weight: .black, design: .rounded))
+                        .font(.system(size: 27, weight: .black, design: .rounded))
                         .foregroundStyle(engine.instructionColor)
                 }
             }
-            .minimumScaleFactor(0.75)
+            .minimumScaleFactor(0.65)
             .lineLimit(1)
             .scaleEffect(engine.isPsychAnimation ? 1.08 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.5), value: engine.isPsychAnimation)

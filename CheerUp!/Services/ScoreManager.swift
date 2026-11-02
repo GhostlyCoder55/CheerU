@@ -36,43 +36,52 @@ final class ScoreManager {
 enum GameIdentifier: String, CaseIterable, Identifiable {
     case tap = "tap"
     case tradeOff = "tradeOff"
+    case wheels = "wheels"
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .tap:      return "TAP"
-        case .tradeOff: return "THE TRADE OFF"
+        case .tradeOff: return "TRADE OFF"
+        case .wheels:   return "WHEELS"
         }
     }
 
     var subtitle: String {
+        let isFr = LanguageManager.shared.isFrench
         switch self {
-        case .tap:      return "Reflex • Pixel Pop"
-        case .tradeOff: return "Visualizer • Interactive Constraint"
+        case .tap:      return isFr ? "Réflexes • Vitesse" : "Reflex • Fast Taps"
+        case .tradeOff: return isFr ? "Rapide, Bon, Pas cher" : "Fast, Good, Cheap"
+        case .wheels:   return isFr ? "Roue Surprise" : "Surprise Wheel"
         }
     }
 
     var shortDescription: String {
+        let isFr = LanguageManager.shared.isFrench
         switch self {
         case .tap:
-            return "Tap the target color tile to trigger a pixel explosion before time runs out."
+            return isFr ? "Touchez la bonne couleur à temps." : "Tap the right color before time runs out."
         case .tradeOff:
-            return "Fast, Good, Cheap: Pick two. An interactive constraint demonstrating that one value must always be sacrificed."
+            return isFr ? "Choisissez deux : Rapide, Bon, Pas cher. Un est sacrifié." : "Pick two: Fast, Good, Cheap. One value is always sacrificed."
+        case .wheels:
+            return isFr ? "Tournez la roue pour des surprises et défis." : "Spin the wheel for fun surprises and quick challenges."
         }
     }
 
     var symbol: String {
         switch self {
-        case .tap:      return "hand.tap.fill"
-        case .tradeOff: return "slider.horizontal.3"
+        case .tap:
+            return "hand.tap.fill"
+        case .tradeOff, .wheels:
+            return "slider.horizontal.3"
         }
     }
 
     var isGame: Bool {
         switch self {
         case .tap: return true
-        case .tradeOff: return false
+        case .tradeOff, .wheels: return false
         }
     }
 }

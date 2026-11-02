@@ -11,10 +11,11 @@ enum TradeOffValue: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 
     var label: String {
+        let isFr = LanguageManager.shared.isFrench
         switch self {
-        case .fast:  return "FAST"
-        case .good:  return "GOOD"
-        case .cheap: return "CHEAP"
+        case .fast:  return isFr ? "RAPIDE" : "FAST"
+        case .good:  return isFr ? "BON" : "GOOD"
+        case .cheap: return isFr ? "PAS CHER" : "CHEAP"
         }
     }
 

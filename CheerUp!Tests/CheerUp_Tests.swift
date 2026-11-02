@@ -50,6 +50,22 @@ struct CheerUp_Tests {
         AudioManager.shared.play(.lose)
     }
 
+    @Test func wheelsEngineSpinAndOutcomes() async throws {
+        let engine = WheelsEngine()
+        #expect(!engine.isSpinning)
+        #expect(engine.selectedOutcome == nil)
+
+        engine.spin()
+        #expect(engine.isSpinning)
+        #expect(engine.selectedOutcome != nil)
+        #expect(engine.mascotMood == .wow)
+
+        // Advance tick through completion
+        engine.tick(dt: 6.0)
+        #expect(!engine.isSpinning)
+        #expect(engine.selectedOutcome != nil)
+    }
+
     @Test func appStateNavigation() async throws {
         let state = AppState()
         #expect(!state.isPlayingGame)

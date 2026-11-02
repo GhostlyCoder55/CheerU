@@ -13,13 +13,14 @@ struct ArcadeHomeView: View {
     private let games: [(game: GameIdentifier, gradient: [Color])] = [
         (.tap,      CheerUpColors.GameGradient.tap),
         (.tradeOff, CheerUpColors.GameGradient.tradeOff),
+        (.wheels,   CheerUpColors.GameGradient.wheels),
     ]
 
     var body: some View {
         ZStack {
-            // Background
+            // Background: Dark Slate Gradient Palette (#253745 -> #11212D -> #06141B)
             LinearGradient(
-                colors: [CheerUpColors.deepNavy, CheerUpColors.darkBlue],
+                colors: CheerUpColors.backgroundGradient,
                 startPoint: .top,
                 endPoint: .bottom
             )
@@ -74,7 +75,7 @@ struct ArcadeHomeView: View {
                     .font(CheerUpFont.largeTitle)
                     .foregroundStyle(CheerUpColors.lightGrey)
 
-                Text("Your little arcade corner.")
+                Text(LanguageManager.shared.tr("Your little arcade corner.", "Votre coin d’arcade."))
                     .font(CheerUpFont.body)
                     .foregroundStyle(CheerUpColors.mutedSilver)
             }
@@ -90,7 +91,7 @@ struct ArcadeHomeView: View {
                     .background(CheerUpColors.blueGrey.opacity(0.4))
                     .clipShape(Circle())
             }
-            .accessibilityLabel("Settings")
+            .accessibilityLabel(LanguageManager.shared.tr("Settings", "Réglages"))
         }
     }
 
