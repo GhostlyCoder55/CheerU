@@ -20,13 +20,6 @@ enum TapRuleType: String {
     case ink = "ink"
     case prev = "prev"
     case lie = "lie"
-    case speed = "speed"
-}
-
-struct MilestoneInfo {
-    let round: Int
-    let rule: TapRuleType
-    let message: String
 }
 
 struct TapPixelParticle: Identifiable {

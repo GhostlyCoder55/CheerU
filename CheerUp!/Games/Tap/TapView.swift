@@ -119,6 +119,7 @@ struct TapView: View {
             engine.startGame()
         }
         .onReceive(timer) { _ in
+            guard !engine.isOver || !engine.particles.isEmpty else { return }
             engine.tick(dt: 0.05)
         }
     }

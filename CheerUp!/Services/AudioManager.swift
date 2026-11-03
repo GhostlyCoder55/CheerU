@@ -1,7 +1,7 @@
 import AVFoundation
 
 // MARK: - Audio Manager
-// High-quality sound effects powered by Kenney Audio (CC0 licensed).
+// High-quality sound effects powered by Kenney Audio (CC0 1.0 Universal / Public Domain).
 // Pre-loads audio buffers with AVAudioPlayer for zero-latency instant playback.
 
 final class AudioManager {
@@ -36,17 +36,10 @@ final class AudioManager {
         case switchToggle = "switch"
         case switchOff = "switch_off"
         case bounce = "bounce"
-        case colorShift = "color_shift"
         case error = "error"
         case nextLevel = "next_level"
         case combo = "combo"
         case win = "win"
-        case lose = "lose"
-        case gameOver = "game_over"
-
-        // Aliases for compatibility
-        static var score: SoundEffect { .combo }
-        static var success: SoundEffect { .win }
     }
 
     /// Play a sound effect from the pre-loaded Kenney audio pool

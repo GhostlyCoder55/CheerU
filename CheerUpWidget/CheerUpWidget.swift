@@ -117,7 +117,7 @@ let compliments = [
     "You are truly invincible!",
     "It's all peace and love!",
     "You're unique in your own way!",
-    "You're fine as fuck!",
+    "You look fantastic!",
     "You are HIM/HER/THEY!",
     "You neither hear, speak, nor see any evil.",
     "You are very special!",

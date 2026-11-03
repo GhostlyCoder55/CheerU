@@ -11,7 +11,6 @@ enum MascotMood {
     case party
     case sus
     case dizzy
-    case gold
 }
 
 struct CheerUpMascotView: View {
@@ -27,22 +26,18 @@ struct CheerUpMascotView: View {
             RoundedRectangle(cornerRadius: size * 0.24, style: .continuous)
                 .fill(
                     LinearGradient(
-                        colors: mood == .gold
-                            ? [Color(hex: 0xFFD84A), Color(hex: 0xF59E0B)]
-                            : [Color(hex: 0x00A896), Color(hex: 0x028090)],
+                        colors: [Color(hex: 0x00A896), Color(hex: 0x028090)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: size * 0.24, style: .continuous)
-                        .stroke(Color.white.opacity(mood == .gold ? 0.45 : 0.18), lineWidth: 1.5)
+                        .stroke(Color.white.opacity(0.18), lineWidth: 1.5)
                 )
                 .shadow(
-                    color: mood == .gold
-                        ? Color(hex: 0xF59E0B).opacity(0.55)
-                        : Color(hex: 0x00A896).opacity(0.4),
-                    radius: mood == .gold ? 12 : 8,
+                    color: Color(hex: 0x00A896).opacity(0.4),
+                    radius: 8,
                     x: 0,
                     y: 4
                 )
@@ -63,11 +58,9 @@ struct CheerUpMascotView: View {
             }
             .offset(y: size * 0.02)
 
-            // Accessories: Party Hat or Crown
+            // Accessories: Party Hat
             if mood == .party {
                 partyHat
-            } else if mood == .gold {
-                goldenCrown
             }
         }
         .frame(width: size, height: size)
@@ -82,7 +75,7 @@ struct CheerUpMascotView: View {
     @ViewBuilder
     private var eyeView: some View {
         switch mood {
-        case .happy, .party, .gold:
+        case .happy, .party:
             HStack(spacing: size * 0.14) {
                 RoundedRectangle(cornerRadius: 3)
                     .fill(Color.black)
@@ -136,7 +129,7 @@ struct CheerUpMascotView: View {
     @ViewBuilder
     private var mouthView: some View {
         switch mood {
-        case .happy, .party, .gold:
+        case .happy, .party:
             MascotSmileShape()
                 .stroke(Color.black, style: StrokeStyle(lineWidth: size * 0.09, lineCap: .square, lineJoin: .miter))
                 .frame(width: size * 0.34, height: size * 0.12)
@@ -178,27 +171,9 @@ struct CheerUpMascotView: View {
         }
     }
 
-    // MARK: - Golden Crown
-    private var goldenCrown: some View {
-        GeometryReader { _ in
-            Path { p in
-                p.move(to: CGPoint(x: size * 0.25, y: 0))
-                p.addLine(to: CGPoint(x: size * 0.20, y: -size * 0.18))
-                p.addLine(to: CGPoint(x: size * 0.38, y: -size * 0.08))
-                p.addLine(to: CGPoint(x: size * 0.50, y: -size * 0.24))
-                p.addLine(to: CGPoint(x: size * 0.62, y: -size * 0.08))
-                p.addLine(to: CGPoint(x: size * 0.80, y: -size * 0.18))
-                p.addLine(to: CGPoint(x: size * 0.75, y: 0))
-                p.closeSubpath()
-            }
-            .fill(Color(hex: 0xFFD700))
-            .shadow(color: Color.black.opacity(0.2), radius: 2, y: 1)
-        }
-    }
-
     private func triggerMoodAnimation(_ newMood: MascotMood) {
         switch newMood {
-        case .happy, .wow, .party, .gold:
+        case .happy, .wow, .party:
             withAnimation(.spring(response: 0.25, dampingFraction: 0.5)) {
                 hopOffset = -12
                 wobbleRotation = 0

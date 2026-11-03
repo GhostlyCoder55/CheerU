@@ -18,31 +18,8 @@ enum CheerUpFont {
     static let caption2   = Font.system(size: 11, weight: .medium, design: .rounded)
 
     // MARK: Game-specific
-    static let scoreDisplay = Font.system(size: 52, weight: .black, design: .rounded)
+    static let scoreDisplay    = Font.system(size: 52, weight: .black, design: .rounded)
     static let gameInstruction = Font.system(size: 30, weight: .black, design: .rounded)
-    static let gameStat   = Font.system(size: 22, weight: .heavy, design: .rounded)
-    static let gameLabel  = Font.system(size: 13, weight: .bold, design: .rounded)
-}
-
-// MARK: - Text Style Modifiers
-
-struct GameTitleStyle: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .font(CheerUpFont.title)
-            .foregroundStyle(CheerUpColors.lightGrey)
-    }
-}
-
-struct GameSubtitleStyle: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .font(CheerUpFont.body)
-            .foregroundStyle(CheerUpColors.mutedSilver)
-    }
-}
-
-extension View {
-    func gameTitle() -> some View { modifier(GameTitleStyle()) }
-    func gameSubtitle() -> some View { modifier(GameSubtitleStyle()) }
+    static let gameStat        = Font.system(size: 22, weight: .heavy, design: .rounded)
+    static let gameLabel       = Font.system(size: 13, weight: .bold, design: .rounded)
 }

@@ -47,7 +47,8 @@ struct CheerUp_Tests {
         AudioManager.shared.play(.bounce)
         AudioManager.shared.play(.nextLevel)
         AudioManager.shared.play(.win)
-        AudioManager.shared.play(.lose)
+        AudioManager.shared.play(.error)
+        AudioManager.shared.play(.combo)
     }
 
     @Test func wheelsEngineSpinAndOutcomes() async throws {
@@ -98,5 +99,41 @@ struct CheerUp_Tests {
 
         // Reset to default
         lm.currentLanguage = .english
+    }
+
+    @Test @MainActor func hapticsManagerMethodsExecute() async throws {
+        let hm = HapticsManager.shared
+        hm.setEnabled(true)
+        #expect(hm.isEnabled)
+        hm.lightTap()
+        hm.mediumImpact()
+        hm.heavyImpact()
+        hm.selection()
+        hm.success()
+        hm.warning()
+        hm.error()
+    }
+
+    @Test func tapEngineIncorrectPickDoesNotSpawnConfetti() async throws {
+        let engine = TapEngine()
+        engine.startGame()
+        #expect(engine.particles.isEmpty)
+
+        // Find an incorrect cube
+        let wrongCube = TapCube(id: 99, name: "INVALID", color: .black, hex: 0x000000)
+        engine.selectCube(wrongCube, tapPoint: .zero)
+        #expect(engine.particles.isEmpty)
+    }
+
+    @Test func wheelsAllOutcomesHaveTrilingualSupport() async throws {
+        #expect(WheelsData.outcomes.count >= 24)
+        for outcome in WheelsData.outcomes {
+            #expect(!outcome.titleEn.isEmpty)
+            #expect(!outcome.titleFr.isEmpty)
+            #expect(!outcome.titleEs.isEmpty)
+            #expect(!outcome.textEn.isEmpty)
+            #expect(!outcome.textFr.isEmpty)
+            #expect(!outcome.textEs.isEmpty)
+        }
     }
 }

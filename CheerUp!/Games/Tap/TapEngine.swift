@@ -206,9 +206,6 @@ final class TapEngine {
             isCorrectAnswer = { [weak self] c in c == targetId }
             lastTargetColorId = targetId
             extraTime = 0.6
-
-        case .speed:
-            break
         }
 
         // Calculate time limit — gentler curve, difficulty rises slower, and higher levels retain comfortable time
@@ -291,14 +288,16 @@ final class TapEngine {
 
     func tick(dt: Double = 0.05) {
         // Update confetti particles with rotation & gravity matching Wheels style
-        for i in particles.indices {
-            particles[i].x += particles[i].vx * CGFloat(dt)
-            particles[i].y += particles[i].vy * CGFloat(dt)
-            particles[i].vy += 420 * CGFloat(dt) // gravity
-            particles[i].rotation += particles[i].vr * 28 * dt
-            particles[i].opacity -= dt * 1.5
+        if !particles.isEmpty {
+            for i in particles.indices {
+                particles[i].x += particles[i].vx * CGFloat(dt)
+                particles[i].y += particles[i].vy * CGFloat(dt)
+                particles[i].vy += 420 * CGFloat(dt) // gravity
+                particles[i].rotation += particles[i].vr * 28 * dt
+                particles[i].opacity -= dt * 1.5
+            }
+            particles.removeAll(where: { $0.opacity <= 0 })
         }
-        particles.removeAll(where: { $0.opacity <= 0 })
 
         guard isLive, !isOver else { return }
 
