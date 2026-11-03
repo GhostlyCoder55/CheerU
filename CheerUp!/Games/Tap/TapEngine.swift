@@ -153,7 +153,6 @@ final class TapEngine {
         }
 
         var rule = forcedRule ?? (round == 1 ? .tap : pool.randomElement()!)
-        if rule == .speed { rule = pool.randomElement()! }
         if rule == .prev && lastTargetColorId == nil { rule = round < 6 ? .tap : .ink }
 
         // Shuffle grid order only on higher levels (round 20+)
