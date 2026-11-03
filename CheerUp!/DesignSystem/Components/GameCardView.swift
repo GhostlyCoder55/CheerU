@@ -60,7 +60,7 @@ struct GameCardView: View {
                             HStack(spacing: 4) {
                                 Image(systemName: game.symbol)
                                     .font(.system(size: 10))
-                                Text(LanguageManager.shared.tr("Interactive Exhibit", "Expo Interactive"))
+                                Text(LanguageManager.shared.tr("Interactive Exhibit", "Expo Interactive", "Expo Interactiva"))
                                     .font(CheerUpFont.caption2)
                             }
                             .foregroundStyle(.white.opacity(0.9))
@@ -72,7 +72,7 @@ struct GameCardView: View {
                             HStack(spacing: 4) {
                                 Image(systemName: "trophy.fill")
                                     .font(.system(size: 10))
-                                Text("\(LanguageManager.shared.tr("Best", "Record")): \(highScore)")
+                                Text("\(LanguageManager.shared.tr("Best", "Record", "Récord")): \(highScore)")
                                     .font(CheerUpFont.caption2)
                             }
                             .foregroundStyle(.white.opacity(0.9))

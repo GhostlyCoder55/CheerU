@@ -33,7 +33,7 @@ struct TradeOffView: View {
                         .foregroundStyle(Color.white)
                         .tracking(3)
 
-                    Text(LanguageManager.shared.tr("PICK TWO", "CHOISISSEZ DEUX"))
+                    Text(LanguageManager.shared.tr("PICK TWO", "CHOISISSEZ DEUX", "ELIGE DOS"))
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundStyle(Color.white.opacity(0.45))
                         .tracking(2)
@@ -69,7 +69,7 @@ struct TradeOffView: View {
                         .padding(.horizontal, 48)
                         .padding(.vertical, 4)
 
-                    Text(LanguageManager.shared.tr("One value must always be sacrificed.", "Une valeur est toujours sacrifiée."))
+                    Text(LanguageManager.shared.tr("One value must always be sacrificed.", "Une valeur est toujours sacrifiée.", "Un valor siempre se sacrifica."))
                         .font(.system(size: 13, weight: .regular, design: .rounded))
                         .foregroundStyle(Color.white.opacity(0.45))
                         .italic()
@@ -96,7 +96,7 @@ struct TradeOffView: View {
 
             Spacer()
 
-            Text(LanguageManager.shared.tr("VISUALIZER", "SIMULATEUR"))
+            Text(LanguageManager.shared.tr("VISUALIZER", "SIMULATEUR", "SIMULADOR"))
                 .font(.system(size: 11, weight: .black, design: .rounded))
                 .foregroundStyle(CheerUpColors.mutedSilver.opacity(0.6))
                 .tracking(2)

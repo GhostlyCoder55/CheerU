@@ -167,11 +167,11 @@ final class WheelsEngine {
         mascotMood = outcome.mood
         switch outcome.type {
         case .happy:
-            speechText = WheelsData.happyLines.randomElement() ?? (LanguageManager.shared.isFrench ? "Trop bien !" : "Wholesome win!")
+            speechText = WheelsData.happyLines.randomElement() ?? LanguageManager.shared.tr("Show what you got!", "À vous de jouer !", "¡Tu turno!")
             HapticsManager.shared.success()
             spawnConfetti(count: 70)
         case .chaos:
-            speechText = WheelsData.chaosLines.randomElement() ?? (LanguageManager.shared.isFrench ? "Chaos total !" : "Told you so!")
+            speechText = WheelsData.chaosLines.randomElement() ?? LanguageManager.shared.tr("Told you so!", "Chaos total !", "¡Te lo advertí!")
             AudioManager.shared.play(.pop)
             HapticsManager.shared.heavyImpact()
             if outcome.titleEn == "Upside Down" {

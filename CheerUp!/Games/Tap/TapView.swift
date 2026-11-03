@@ -66,7 +66,7 @@ struct TapView: View {
             // Milestone "NEW RULE!" Banner
             if engine.showBanner, let txt = engine.bannerText {
                 VStack(spacing: 8) {
-                    Text(LanguageManager.shared.tr("NEW RULE!", "NOUVELLE RÈGLE !"))
+                    Text(LanguageManager.shared.tr("NEW RULE!", "NOUVELLE RÈGLE !", "¡NUEVA REGLA!"))
                         .font(.system(size: 26, weight: .black, design: .rounded))
                         .foregroundStyle(CheerUpColors.Tap.red)
 
@@ -143,7 +143,7 @@ struct TapView: View {
             Spacer()
 
             // Round Badge Pill (Center)
-            Text("\(LanguageManager.shared.tr("Round", "Tour")) \(max(1, engine.round))")
+            Text("\(LanguageManager.shared.tr("Round", "Tour", "Ronda")) \(max(1, engine.round))")
                 .font(.system(size: 16, weight: .heavy, design: .rounded))
                 .foregroundStyle(CheerUpColors.Tap.ink)
                 .padding(.horizontal, 16)

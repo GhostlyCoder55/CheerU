@@ -204,7 +204,7 @@ struct WheelsView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "arrow.triangle.2.circlepath")
                         .font(.system(size: 16, weight: .bold))
-                    Text(engine.isSpinning ? LanguageManager.shared.tr("SPINNING...", "EN COURS...") : LanguageManager.shared.tr("SPIN", "TOURNER"))
+                    Text(engine.isSpinning ? LanguageManager.shared.tr("SPINNING...", "EN COURS...", "GIRANDO...") : LanguageManager.shared.tr("SPIN", "TOURNER", "GIRAR"))
                         .font(.system(size: 20, weight: .heavy, design: .rounded))
                         .tracking(2.0)
                 }
@@ -260,7 +260,7 @@ struct WheelsView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "timer")
                             .font(.system(size: 18, weight: .bold))
-                        Text(engine.countdownRemaining > 0 ? "⏱ \(engine.countdownRemaining)s" : LanguageManager.shared.tr("Done! 🎉", "Fini ! 🎉"))
+                        Text(engine.countdownRemaining > 0 ? "⏱ \(engine.countdownRemaining)s" : LanguageManager.shared.tr("Done! 🎉", "Fini ! 🎉", "¡Listo! 🎉"))
                             .font(.system(size: 22, weight: .black, design: .rounded))
                             .monospacedDigit()
                     }
@@ -279,7 +279,7 @@ struct WheelsView: View {
                 Button(action: {
                     engine.spinAgain()
                 }) {
-                    Text(LanguageManager.shared.tr("SPIN AGAIN", "RETOURNER"))
+                    Text(LanguageManager.shared.tr("SPIN AGAIN", "RETOURNER", "OTRA VEZ"))
                         .font(.system(size: 18, weight: .black, design: .rounded))
                         .foregroundStyle(Color.white)
                         .tracking(1.5)

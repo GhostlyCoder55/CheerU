@@ -83,4 +83,20 @@ struct CheerUp_Tests {
         #expect(!state.isPlayingGame)
         #expect(state.selectedGame == nil)
     }
+
+    @Test func languageManagerTranslatesEnglishFrenchSpanish() async throws {
+        let lm = LanguageManager.shared
+
+        lm.currentLanguage = .english
+        #expect(lm.tr("Play", "Jouer", "Jugar") == "Play")
+
+        lm.currentLanguage = .french
+        #expect(lm.tr("Play", "Jouer", "Jugar") == "Jouer")
+
+        lm.currentLanguage = .spanish
+        #expect(lm.tr("Play", "Jouer", "Jugar") == "Jugar")
+
+        // Reset to default
+        lm.currentLanguage = .english
+    }
 }

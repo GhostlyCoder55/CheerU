@@ -65,7 +65,7 @@ struct GameIntroView: View {
                             HStack(spacing: 6) {
                                 Image(systemName: "trophy.fill")
                                     .font(.system(size: 13))
-                                Text("\(LanguageManager.shared.tr("Best", "Record")): \(hs)")
+                                Text("\(LanguageManager.shared.tr("Best", "Record", "Récord")): \(hs)")
                                     .font(CheerUpFont.callout)
                             }
                             .foregroundStyle(Color.yellow.opacity(0.9))
@@ -81,11 +81,11 @@ struct GameIntroView: View {
                 // Action Buttons
                 VStack(spacing: Spacing.md) {
                     CheerUpPrimaryButton(
-                        !game.isGame ? LanguageManager.shared.tr("Open Exhibit", "Ouvrir") : LanguageManager.shared.tr("Play", "Jouer"),
+                        !game.isGame ? LanguageManager.shared.tr("Open Exhibit", "Ouvrir", "Abrir") : LanguageManager.shared.tr("Play", "Jouer", "Jugar"),
                         icon: !game.isGame ? "slider.horizontal.3" : "play.fill",
                         action: onPlay
                     )
-                    CheerUpSecondaryButton(LanguageManager.shared.tr("Back", "Retour"), icon: "chevron.left", action: onBack)
+                    CheerUpSecondaryButton(LanguageManager.shared.tr("Back", "Retour", "Atrás"), icon: "chevron.left", action: onBack)
                 }
                 .padding(.horizontal, Spacing.xl)
                 .opacity(appeared ? 1 : 0)

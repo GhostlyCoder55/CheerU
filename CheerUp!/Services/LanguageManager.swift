@@ -4,6 +4,7 @@ import SwiftUI
 enum AppLanguage: String, CaseIterable, Identifiable {
     case english = "en"
     case french = "fr"
+    case spanish = "es"
 
     var id: String { rawValue }
 
@@ -11,6 +12,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
         switch self {
         case .english: return "English"
         case .french:  return "Français"
+        case .spanish: return "Español"
         }
     }
 }
@@ -39,7 +41,18 @@ final class LanguageManager {
         currentLanguage == .french
     }
 
-    func tr(_ en: String, _ fr: String) -> String {
-        isFrench ? fr : en
+    var isSpanish: Bool {
+        currentLanguage == .spanish
+    }
+
+    func tr(_ en: String, _ fr: String, _ es: String? = nil) -> String {
+        switch currentLanguage {
+        case .french:
+            return fr
+        case .spanish:
+            return es ?? en
+        case .english:
+            return en
+        }
     }
 }

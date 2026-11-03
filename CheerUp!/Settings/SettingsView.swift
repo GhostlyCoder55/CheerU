@@ -15,20 +15,20 @@ struct SettingsView: View {
                 List {
                     Section {
                         Toggle(isOn: $soundEnabled) {
-                            Label(languageManager.tr("Sound Effects", "Sons"), systemImage: "speaker.wave.2.fill")
+                            Label(languageManager.tr("Sound Effects", "Sons", "Sonidos"), systemImage: "speaker.wave.2.fill")
                         }
                         .onChange(of: soundEnabled) { _, newValue in
                             AudioManager.shared.setEnabled(newValue)
                         }
 
                         Toggle(isOn: $hapticsEnabled) {
-                            Label(languageManager.tr("Haptic Feedback", "Vibrations"), systemImage: "hand.tap.fill")
+                            Label(languageManager.tr("Haptic Feedback", "Vibrations", "Vibración"), systemImage: "hand.tap.fill")
                         }
                         .onChange(of: hapticsEnabled) { _, newValue in
                             HapticsManager.shared.setEnabled(newValue)
                         }
                     } header: {
-                        Text(languageManager.tr("PREFERENCES", "PRÉFÉRENCES"))
+                        Text(languageManager.tr("PREFERENCES", "PRÉFÉRENCES", "PREFERENCIAS"))
                     }
 
                     Section {
@@ -37,27 +37,27 @@ struct SettingsView: View {
                                 Text(lang.displayName).tag(lang)
                             }
                         } label: {
-                            Label(languageManager.tr("Language", "Langue"), systemImage: "globe")
+                            Label(languageManager.tr("Language", "Langue", "Idioma"), systemImage: "globe")
                         }
                         .pickerStyle(.menu)
                     } header: {
-                        Text(languageManager.tr("LANGUAGE", "LANGUE"))
+                        Text(languageManager.tr("LANGUAGE", "LANGUE", "IDIOMA"))
                     }
 
                     Section {
                         HStack {
-                            Text(languageManager.tr("Version", "Version"))
+                            Text(languageManager.tr("Version", "Version", "Versión"))
                             Spacer()
                             Text("2.0")
                                 .foregroundStyle(CheerUpColors.mutedSilver)
                         }
                     } header: {
-                        Text(languageManager.tr("ABOUT", "À PROPOS"))
+                        Text(languageManager.tr("ABOUT", "À PROPOS", "ACERCA DE"))
                     }
                 }
                 .scrollContentBackground(.hidden)
             }
-            .navigationTitle(languageManager.tr("Settings", "Réglages"))
+            .navigationTitle(languageManager.tr("Settings", "Réglages", "Ajustes"))
             .navigationBarTitleDisplayMode(.inline)
         }
         .tint(CheerUpColors.lightGrey)

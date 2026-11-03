@@ -11,8 +11,8 @@ final class TradeOffEngine {
     var isCheap: Bool = false
 
     var sacrificedValue: TradeOffValue? = nil
-    var statement: String = LanguageManager.shared.tr("PICK TWO", "CHOISISSEZ DEUX")
-    var lessonDetail: String = LanguageManager.shared.tr("One value is always sacrificed.", "Une valeur est toujours sacrifiée.")
+    var statement: String = LanguageManager.shared.tr("PICK TWO", "CHOISISSEZ DEUX", "ELIGE DOS")
+    var lessonDetail: String = LanguageManager.shared.tr("One value is always sacrificed.", "Une valeur est toujours sacrifiée.", "Un valor siempre se sacrifica.")
 
     func toggle(_ value: TradeOffValue) {
         let turningOn: Bool
@@ -60,39 +60,37 @@ final class TradeOffEngine {
     }
 
     private func updateLesson() {
-        let isFr = LanguageManager.shared.isFrench
         if isFast && isGood {
-            statement = isFr ? "RAPIDE & BON" : "FAST & GOOD"
-            lessonDetail = isFr ? "Super et rapide, mais cher." : "Great and fast, but expensive."
+            statement = LanguageManager.shared.tr("FAST & GOOD", "RAPIDE & BON", "RÁPIDO Y BUENO")
+            lessonDetail = LanguageManager.shared.tr("Great and fast, but expensive.", "Super et rapide, mais cher.", "Genial y rápido, pero caro.")
         } else if isGood && isCheap {
-            statement = isFr ? "BON & PAS CHER" : "GOOD & CHEAP"
-            lessonDetail = isFr ? "Super et pas cher, mais lent." : "Great and cheap, but slow."
+            statement = LanguageManager.shared.tr("GOOD & CHEAP", "BON & PAS CHER", "BUENO Y BARATO")
+            lessonDetail = LanguageManager.shared.tr("Great and cheap, but slow.", "Super et pas cher, mais lent.", "Genial y barato, pero lento.")
         } else if isFast && isCheap {
-            statement = isFr ? "RAPIDE & PAS CHER" : "FAST & CHEAP"
-            lessonDetail = isFr ? "Rapide et pas cher, mais médiocre." : "Fast and cheap, but low quality."
+            statement = LanguageManager.shared.tr("FAST & CHEAP", "RAPIDE & PAS CHER", "RÁPIDO Y BARATO")
+            lessonDetail = LanguageManager.shared.tr("Fast and cheap, but low quality.", "Rapide et pas cher, mais médiocre.", "Rápido y barato, pero mediocre.")
         } else if isFast {
-            statement = isFr ? "JUSTE RAPIDE" : "ONLY FAST"
-            lessonDetail = isFr ? "La vitesse seule crée des erreurs." : "Speed alone leads to rushed mistakes."
+            statement = LanguageManager.shared.tr("ONLY FAST", "JUSTE RAPIDE", "SOLO RÁPIDO")
+            lessonDetail = LanguageManager.shared.tr("Speed alone leads to rushed mistakes.", "La vitesse seule crée des erreurs.", "La velocidad sola genera errores.")
         } else if isGood {
-            statement = isFr ? "JUSTE BON" : "ONLY GOOD"
-            lessonDetail = isFr ? "La qualité seule prend du temps." : "Quality alone takes forever or costs a fortune."
+            statement = LanguageManager.shared.tr("ONLY GOOD", "JUSTE BON", "SOLO BUENO")
+            lessonDetail = LanguageManager.shared.tr("Quality alone takes forever or costs a fortune.", "La qualité seule prend du temps.", "La calidad sola toma tiempo o dinero.")
         } else if isCheap {
-            statement = isFr ? "JUSTE PAS CHER" : "ONLY CHEAP"
-            lessonDetail = isFr ? "Le pas cher seul est lent et bâclé." : "Cheap alone means slow delivery and poor quality."
+            statement = LanguageManager.shared.tr("ONLY CHEAP", "JUSTE PAS CHER", "SOLO BARATO")
+            lessonDetail = LanguageManager.shared.tr("Cheap alone means slow delivery and poor quality.", "Le pas cher seul est lent et bâclé.", "Lo barato solo es lento y deficiente.")
         } else {
-            statement = isFr ? "CHOISISSEZ DEUX" : "PICK TWO"
-            lessonDetail = isFr ? "Une valeur est toujours sacrifiée." : "One value is always sacrificed."
+            statement = LanguageManager.shared.tr("PICK TWO", "CHOISISSEZ DEUX", "ELIGE DOS")
+            lessonDetail = LanguageManager.shared.tr("One value is always sacrificed.", "Une valeur est toujours sacrifiée.", "Un valor siempre se sacrifica.")
         }
     }
 
     func reset() {
-        let isFr = LanguageManager.shared.isFrench
         isFast = false
         isGood = false
         isCheap = false
         sacrificedValue = nil
-        statement = isFr ? "CHOISISSEZ DEUX" : "PICK TWO"
-        lessonDetail = isFr ? "Une valeur est toujours sacrifiée." : "One value is always sacrificed."
+        statement = LanguageManager.shared.tr("PICK TWO", "CHOISISSEZ DEUX", "ELIGE DOS")
+        lessonDetail = LanguageManager.shared.tr("One value is always sacrificed.", "Une valeur est toujours sacrifiée.", "Un valor siempre se sacrifica.")
         AudioManager.shared.play(.switchOff)
     }
 }

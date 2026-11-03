@@ -49,29 +49,44 @@ final class TapEngine {
     ]
 
     private let cubesFr = ["ROUGE", "BLEU", "VERT", "JAUNE"]
+    private let cubesEs = ["ROJO", "AZUL", "VERDE", "AMARILLO"]
 
     private func cubeName(for id: Int) -> String {
-        LanguageManager.shared.isFrench ? cubesFr[id] : cubes[id].name
+        switch LanguageManager.shared.currentLanguage {
+        case .french:  return cubesFr[id]
+        case .spanish: return cubesEs[id]
+        case .english: return cubes[id].name
+        }
     }
 
     private var cheers: [String] {
-        LanguageManager.shared.isFrench
-            ? ["Bravo !", "Top !", "Super !", "Génial !", "Parfait !"]
-            : ["Nice!", "Boom!", "Smooth.", "Yes yes yes!", "Look at you go."]
+        switch LanguageManager.shared.currentLanguage {
+        case .french:
+            return ["Bravo !", "Top !", "Super !", "Génial !", "Parfait !"]
+        case .spanish:
+            return ["¡Genial!", "¡Bien!", "¡Perfecto!", "¡Súper!", "¡Excelente!"]
+        case .english:
+            return ["Nice!", "Boom!", "Smooth.", "Yes yes yes!", "Look at you go."]
+        }
     }
 
     private var oopsMessages: [String] {
-        LanguageManager.shared.isFrench
-            ? ["Oups.", "Pas facile !", "Presque !", "Aïe."]
-            : ["Oof.", "Colours are hard, okay?", "I believed in you.", "That's a no from me."]
+        switch LanguageManager.shared.currentLanguage {
+        case .french:
+            return ["Oups.", "Pas facile !", "Presque !", "Aïe."]
+        case .spanish:
+            return ["¡Ups!", "¡Difícil!", "¡Casi!", "¡Ánimo!"]
+        case .english:
+            return ["Oof.", "Colours are hard, okay?", "I believed in you.", "That's a no from me."]
+        }
     }
 
     private var milestones: [Int: (rule: TapRuleType, text: String)] {
         [
-            6: (.ink, LanguageManager.shared.tr("Follow the ink color!", "Suivez la couleur de l'encre !")),
-            12: (.not, LanguageManager.shared.tr("Some colors are now banned!", "Des couleurs sont bannies !")),
-            18: (.prev, LanguageManager.shared.tr("Memory test. Don't blink!", "Test mémoire. Attention !")),
-            25: (.lie, LanguageManager.shared.tr("Watch out for psychs!", "Attention aux pièges !"))
+            6: (.ink, LanguageManager.shared.tr("Follow the ink color!", "Suivez la couleur de l'encre !", "¡Sigue el color de la tinta!")),
+            12: (.not, LanguageManager.shared.tr("Some colors are now banned!", "Des couleurs sont bannies !", "¡Colores prohibidos!")),
+            18: (.prev, LanguageManager.shared.tr("Memory test. Don't blink!", "Test mémoire. Attention !", "¡Prueba de memoria!")),
+            25: (.lie, LanguageManager.shared.tr("Watch out for psychs!", "Attention aux pièges !", "¡Cuidado con las trampas!"))
         ]
     }
 
@@ -89,7 +104,7 @@ final class TapEngine {
         lastTargetColorId = nil
         particles = []
         mascotMood = .happy
-        speechText = LanguageManager.shared.tr("Let's go! Tap fast, think faster.", "C'est parti ! Touchez vite.")
+        speechText = LanguageManager.shared.tr("Let's go! Tap fast, think faster.", "C'est parti ! Touchez vite.", "¡Vamos! Toca rápido.")
         AudioManager.shared.play(.pop)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
@@ -154,14 +169,14 @@ final class TapEngine {
 
         switch rule {
         case .tap:
-            instructionPrefix = LanguageManager.shared.tr("Tap", "Touchez")
+            instructionPrefix = LanguageManager.shared.tr("Tap", "Touchez", "Toca")
             instructionWord = cubeName(for: targetId)
             instructionColor = cubes[targetId].color
             isCorrectAnswer = { [weak self] c in c == targetId }
             lastTargetColorId = targetId
 
         case .not:
-            instructionPrefix = LanguageManager.shared.tr("Anything but", "Sauf")
+            instructionPrefix = LanguageManager.shared.tr("Anything but", "Sauf", "Menos")
             instructionWord = cubeName(for: targetId)
             instructionColor = cubes[targetId].color
             isCorrectAnswer = { [weak self] c in c != targetId }
@@ -170,7 +185,7 @@ final class TapEngine {
 
         case .ink:
             let inkId = (targetId + 1 + Int.random(in: 0..<3)) % 4
-            instructionPrefix = LanguageManager.shared.tr("Tap the ink:", "L'encre :")
+            instructionPrefix = LanguageManager.shared.tr("Tap the ink:", "L'encre :", "La tinta:")
             instructionWord = cubeName(for: targetId)
             instructionColor = cubes[inkId].color
             isCorrectAnswer = { [weak self] c in c == inkId }
@@ -179,8 +194,8 @@ final class TapEngine {
 
         case .prev:
             let prevId = lastTargetColorId ?? targetId
-            instructionPrefix = LanguageManager.shared.tr("Tap last round's", "Dernière")
-            instructionWord = LanguageManager.shared.tr("COLOR", "COULEUR")
+            instructionPrefix = LanguageManager.shared.tr("Tap last round's", "Dernière", "Anterior")
+            instructionWord = LanguageManager.shared.tr("COLOR", "COULEUR", "COLOR")
             instructionColor = .white
             instructionTag = ""
             isCorrectAnswer = { [weak self] c in c == prevId }
@@ -204,7 +219,7 @@ final class TapEngine {
 
         if let fakeId = lieFakeId {
             // Psych-out mechanic!
-            instructionPrefix = LanguageManager.shared.tr("Tap", "Touchez")
+            instructionPrefix = LanguageManager.shared.tr("Tap", "Touchez", "Toca")
             instructionWord = cubeName(for: fakeId)
             instructionColor = cubes[fakeId].color
             isLive = false
@@ -213,7 +228,7 @@ final class TapEngine {
                 guard let self, !self.isOver else { return }
                 self.instructionWord = self.cubeName(for: targetId)
                 self.instructionColor = self.cubes[targetId].color
-                self.instructionTag = LanguageManager.shared.tr("Psych!", "Raté !")
+                self.instructionTag = LanguageManager.shared.tr("Psych!", "Raté !", "¡Caíste!")
                 self.isPsychAnimation = true
                 AudioManager.shared.play(.switchToggle)
 
@@ -292,7 +307,7 @@ final class TapEngine {
 
         if progress <= 0 {
             isLive = false
-            handleMistake(say: LanguageManager.shared.tr("Too slow! The colours got bored.", "Trop lent ! Les couleurs s'ennuient."))
+            handleMistake(say: LanguageManager.shared.tr("Too slow! The colours got bored.", "Trop lent ! Les couleurs s'ennuient.", "¡Muy lento! Los colores se aburrieron."))
         }
     }
 

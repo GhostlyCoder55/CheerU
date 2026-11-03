@@ -49,23 +49,36 @@ enum GameIdentifier: String, CaseIterable, Identifiable {
     }
 
     var subtitle: String {
-        let isFr = LanguageManager.shared.isFrench
         switch self {
-        case .tap:      return isFr ? "Réflexes • Vitesse" : "Reflex • Fast Taps"
-        case .tradeOff: return isFr ? "Rapide, Bon, Pas cher" : "Fast, Good, Cheap"
-        case .wheels:   return isFr ? "Roue Surprise" : "Surprise Wheel"
+        case .tap:
+            return LanguageManager.shared.tr("Reflex • Fast Taps", "Réflexes • Vitesse", "Reflejos • Velocidad")
+        case .tradeOff:
+            return LanguageManager.shared.tr("Fast, Good, Cheap", "Rapide, Bon, Pas cher", "Rápido, Bueno, Barato")
+        case .wheels:
+            return LanguageManager.shared.tr("Surprise Wheel", "Roue Surprise", "Rueda Sorpresa")
         }
     }
 
     var shortDescription: String {
-        let isFr = LanguageManager.shared.isFrench
         switch self {
         case .tap:
-            return isFr ? "Touchez la bonne couleur à temps." : "Tap the right color before time runs out."
+            return LanguageManager.shared.tr(
+                "Tap the right color before time runs out.",
+                "Touchez la bonne couleur à temps.",
+                "Toca el color correcto a tiempo."
+            )
         case .tradeOff:
-            return isFr ? "Choisissez deux : Rapide, Bon, Pas cher. Un est sacrifié." : "Pick two: Fast, Good, Cheap. One value is always sacrificed."
+            return LanguageManager.shared.tr(
+                "Pick two: Fast, Good, Cheap. One value is always sacrificed.",
+                "Choisissez deux : Rapide, Bon, Pas cher. Un est sacrifié.",
+                "Elige dos: Rápido, Bueno, Barato. Uno se sacrifica siempre."
+            )
         case .wheels:
-            return isFr ? "Tournez la roue pour des surprises et défis." : "Spin the wheel for fun surprises and quick challenges."
+            return LanguageManager.shared.tr(
+                "Spin the wheel for fun surprises and quick challenges.",
+                "Tournez la roue pour des surprises et défis.",
+                "Gira la rueda para sorpresas y retos."
+            )
         }
     }
 

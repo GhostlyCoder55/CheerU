@@ -30,7 +30,7 @@ struct GameResultView: View {
 
                 // Score Section
                 VStack(spacing: Spacing.sm) {
-                    Text(LanguageManager.shared.tr("FINAL SCORE", "SCORE FINAL"))
+                    Text(LanguageManager.shared.tr("FINAL SCORE", "SCORE FINAL", "PUNTUACIÓN"))
                         .font(CheerUpFont.caption)
                         .foregroundStyle(CheerUpColors.mutedSilver)
                         .tracking(2)
@@ -41,7 +41,7 @@ struct GameResultView: View {
                         .contentTransition(.numericText())
 
                     if isNewHighScore {
-                        Label(LanguageManager.shared.tr("NEW BEST!", "NOUVEAU RECORD !"), systemImage: "star.fill")
+                        Label(LanguageManager.shared.tr("NEW BEST!", "NOUVEAU RECORD !", "¡NUEVO RÉCORD!"), systemImage: "star.fill")
                             .font(CheerUpFont.caption)
                             .foregroundStyle(.yellow)
                             .padding(.horizontal, Spacing.md)
@@ -57,15 +57,15 @@ struct GameResultView: View {
                     Image(systemName: "trophy.fill")
                         .foregroundStyle(CheerUpColors.mutedSilver)
                         .font(.system(size: 14))
-                    Text("\(LanguageManager.shared.tr("Best", "Record")): \(max(score, highScore))")
+                    Text("\(LanguageManager.shared.tr("Best", "Record", "Récord")): \(max(score, highScore))")
                         .font(CheerUpFont.callout)
                         .foregroundStyle(CheerUpColors.mutedSilver)
                 }
 
                 // Action Buttons
                 VStack(spacing: Spacing.md) {
-                    CheerUpPrimaryButton(LanguageManager.shared.tr("Play Again", "Rejouer"), icon: "arrow.clockwise", action: onReplay)
-                    CheerUpSecondaryButton(LanguageManager.shared.tr("Arcade", "Arcade"), icon: "square.grid.2x2.fill", action: onExit)
+                    CheerUpPrimaryButton(LanguageManager.shared.tr("Play Again", "Rejouer", "Jugar de nuevo"), icon: "arrow.clockwise", action: onReplay)
+                    CheerUpSecondaryButton(LanguageManager.shared.tr("Arcade", "Arcade", "Arcade"), icon: "square.grid.2x2.fill", action: onExit)
                 }
             }
             .padding(Spacing.xxl)

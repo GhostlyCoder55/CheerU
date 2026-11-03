@@ -75,7 +75,7 @@ struct ArcadeHomeView: View {
                     .font(CheerUpFont.largeTitle)
                     .foregroundStyle(CheerUpColors.lightGrey)
 
-                Text(LanguageManager.shared.tr("Your little arcade corner.", "Votre coin d’arcade."))
+                Text(LanguageManager.shared.tr("Your little arcade corner.", "Votre coin d’arcade.", "Tu rincón arcade."))
                     .font(CheerUpFont.body)
                     .foregroundStyle(CheerUpColors.mutedSilver)
             }
@@ -91,7 +91,7 @@ struct ArcadeHomeView: View {
                     .background(CheerUpColors.blueGrey.opacity(0.4))
                     .clipShape(Circle())
             }
-            .accessibilityLabel(LanguageManager.shared.tr("Settings", "Réglages"))
+            .accessibilityLabel(LanguageManager.shared.tr("Settings", "Réglages", "Ajustes"))
         }
     }
 
