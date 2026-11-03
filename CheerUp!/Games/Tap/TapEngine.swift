@@ -185,7 +185,7 @@ final class TapEngine {
 
         case .ink:
             let inkId = (targetId + 1 + Int.random(in: 0..<3)) % 4
-            instructionPrefix = LanguageManager.shared.tr("Tap the ink:", "L'encre :", "La tinta:")
+            instructionPrefix = LanguageManager.shared.tr("Tap ink:", "Encre :", "Tinta:")
             instructionWord = cubeName(for: targetId)
             instructionColor = cubes[inkId].color
             isCorrectAnswer = { [weak self] c in c == inkId }
