@@ -101,7 +101,7 @@ struct CheerUp_Tests {
         lm.currentLanguage = .english
     }
 
-    @Test @MainActor func hapticsManagerMethodsExecute() async throws {
+    @Test func hapticsManagerMethodsExecute() async throws {
         let hm = HapticsManager.shared
         hm.setEnabled(true)
         #expect(hm.isEnabled)
