@@ -226,46 +226,63 @@ final class GravityAudioController {
     private var bgmPlayer: AVAudioPlayer?
     private var motePlayers: [ElementalMoteType: AVAudioPlayer] = [:]
     private var shiftPlayer: AVAudioPlayer?
+    private let audioQueue = DispatchQueue(label: "com.gc.cheerup.gravity.audio", qos: .userInitiated)
 
     private init() {
-        buildSynthesizedAudio()
+        // Synthesize retro audio buffers and prepare players off the main thread
+        audioQueue.async { [weak self] in
+            self?.buildSynthesizedAudio()
+        }
     }
 
     func startBackgroundMusic() {
         guard AudioManager.shared.isEnabled else {
-            bgmPlayer?.stop()
+            audioQueue.async { [weak self] in self?.bgmPlayer?.stop() }
             return
         }
-        if let player = bgmPlayer, !player.isPlaying {
-            player.currentTime = 0
-            player.play()
+        audioQueue.async { [weak self] in
+            guard let self = self, let player = self.bgmPlayer else { return }
+            if !player.isPlaying {
+                player.currentTime = 0
+                player.play()
+            }
         }
     }
 
     func pauseBackgroundMusic() {
-        bgmPlayer?.pause()
+        audioQueue.async { [weak self] in
+            self?.bgmPlayer?.pause()
+        }
     }
 
     func stopBackgroundMusic() {
-        bgmPlayer?.stop()
+        audioQueue.async { [weak self] in
+            self?.bgmPlayer?.stop()
+        }
     }
 
     func playMoteSound(_ type: ElementalMoteType) {
         guard AudioManager.shared.isEnabled else { return }
-        if let player = motePlayers[type] {
-            player.currentTime = 0
-            player.play()
+        audioQueue.async { [weak self] in
+            guard let self = self else { return }
+            if let player = self.motePlayers[type] {
+                player.currentTime = 0
+                player.play()
+            }
         }
         AudioManager.shared.play(.pop)
     }
 
     func playGravityShiftSound() {
         guard AudioManager.shared.isEnabled else { return }
-        if let player = shiftPlayer {
-            player.currentTime = 0
-            player.play()
-        } else {
-            AudioManager.shared.play(.switchToggle)
+        audioQueue.async { [weak self] in
+            guard let self = self else { return }
+            if let player = self.shiftPlayer {
+                player.currentTime = 0
+                player.play()
+            } else {
+                AudioManager.shared.play(.switchToggle)
+            }
         }
     }
 

@@ -26,14 +26,16 @@ final class GameCenterManager {
     func authenticateLocalPlayer() {
         let player = GKLocalPlayer.local
         player.authenticateHandler = { [weak self] viewController, error in
-            if player.isAuthenticated {
-                self?.isAuthenticated = true
-            } else {
-                self?.isAuthenticated = false
-            }
+            DispatchQueue.main.async {
+                if player.isAuthenticated {
+                    self?.isAuthenticated = true
+                } else {
+                    self?.isAuthenticated = false
+                }
 
-            if let vc = viewController {
-                Self.topViewController()?.present(vc, animated: true)
+                if let vc = viewController {
+                    Self.topViewController()?.present(vc, animated: true)
+                }
             }
         }
     }
@@ -44,7 +46,9 @@ final class GameCenterManager {
         let player = GKLocalPlayer.local
         guard player.isAuthenticated else { return }
 
-        GKLeaderboard.submitScore(score, context: 0, player: player, leaderboardIDs: [id]) { _ in }
+        DispatchQueue.global(qos: .utility).async {
+            GKLeaderboard.submitScore(score, context: 0, player: player, leaderboardIDs: [id]) { _ in }
+        }
     }
 
     private static func topViewController() -> UIViewController? {

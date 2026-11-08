@@ -135,43 +135,58 @@ final class RushAudioController {
     private var nearMissPlayer: AVAudioPlayer?
     private var warningPlayer: AVAudioPlayer?
     private var shieldBreakPlayer: AVAudioPlayer?
+    private let audioQueue = DispatchQueue(label: "com.gc.cheerup.rush.audio", qos: .userInitiated)
 
     private init() {
-        buildSynthesizedAudio()
+        // Synthesize retro audio buffers and prepare players off the main thread
+        audioQueue.async { [weak self] in
+            self?.buildSynthesizedAudio()
+        }
     }
 
     func startBackgroundMusic() {
         guard AudioManager.shared.isEnabled else {
-            bgmPlayer?.stop()
+            audioQueue.async { [weak self] in self?.bgmPlayer?.stop() }
             return
         }
-        if let player = bgmPlayer, !player.isPlaying {
-            player.currentTime = 0
-            player.play()
+        audioQueue.async { [weak self] in
+            guard let self = self, let player = self.bgmPlayer else { return }
+            if !player.isPlaying {
+                player.currentTime = 0
+                player.play()
+            }
         }
     }
 
     func pauseBackgroundMusic() {
-        bgmPlayer?.pause()
+        audioQueue.async { [weak self] in
+            self?.bgmPlayer?.pause()
+        }
     }
 
     func stopBackgroundMusic() {
-        bgmPlayer?.stop()
+        audioQueue.async { [weak self] in
+            self?.bgmPlayer?.stop()
+        }
     }
 
     func playNearMiss() {
         guard AudioManager.shared.isEnabled else { return }
-        if let player = nearMissPlayer {
-            player.currentTime = 0
-            player.play()
-        } else {
-            AudioManager.shared.play(.pop)
+        audioQueue.async { [weak self] in
+            guard let self = self else { return }
+            if let player = self.nearMissPlayer {
+                player.currentTime = 0
+                player.play()
+            } else {
+                AudioManager.shared.play(.pop)
+            }
         }
     }
 
     func playWarning() {
         guard AudioManager.shared.isEnabled else { return }
-        if let player = warningPlayer {
+        audioQueue.async { [weak self] in
+            guard let self = self, let player = self.warningPlayer else { return }
             player.currentTime = 0
             player.play()
         }
@@ -179,11 +194,14 @@ final class RushAudioController {
 
     func playShieldBreak() {
         guard AudioManager.shared.isEnabled else { return }
-        if let player = shieldBreakPlayer {
-            player.currentTime = 0
-            player.play()
-        } else {
-            AudioManager.shared.play(.bounce)
+        audioQueue.async { [weak self] in
+            guard let self = self else { return }
+            if let player = self.shieldBreakPlayer {
+                player.currentTime = 0
+                player.play()
+            } else {
+                AudioManager.shared.play(.bounce)
+            }
         }
     }
 

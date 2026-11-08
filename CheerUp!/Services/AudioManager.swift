@@ -14,14 +14,18 @@ final class AudioManager {
 
     private var players: [SoundEffect: [AVAudioPlayer]] = [:]
     private let playerPoolSize = 3 // Allows overlapping fast taps
+    private let audioQueue = DispatchQueue(label: "com.gc.cheerup.audiomanager", qos: .userInitiated)
 
     private init() {
         if UserDefaults.standard.object(forKey: "cheerup.sound.enabled") == nil {
             UserDefaults.standard.set(true, forKey: "cheerup.sound.enabled")
         }
 
-        configureAudioSession()
-        preloadSounds()
+        // Configure audio session and preload audio buffers off the main thread to prevent UI hitches
+        audioQueue.async { [weak self] in
+            self?.configureAudioSession()
+            self?.preloadSounds()
+        }
     }
 
     func setEnabled(_ enabled: Bool) {
@@ -43,23 +47,27 @@ final class AudioManager {
         case ding = "ding"
     }
 
-    /// Play a sound effect from the pre-loaded Kenney audio pool
+    /// Play a sound effect from the pre-loaded Kenney audio pool asynchronously off the main thread
     func play(_ effect: SoundEffect) {
         guard isEnabled else { return }
 
-        // Find an idle player in the pool, or reuse the first
-        if let pool = players[effect], !pool.isEmpty {
-            for player in pool {
-                if !player.isPlaying {
-                    player.currentTime = 0
-                    player.play()
-                    return
+        audioQueue.async { [weak self] in
+            guard let self = self else { return }
+
+            // Find an idle player in the pool, or reuse the first
+            if let pool = self.players[effect], !pool.isEmpty {
+                for player in pool {
+                    if !player.isPlaying {
+                        player.currentTime = 0
+                        player.play()
+                        return
+                    }
                 }
+                // All busy, replay first
+                let player = pool[0]
+                player.currentTime = 0
+                player.play()
             }
-            // All busy, replay first
-            let player = pool[0]
-            player.currentTime = 0
-            player.play()
         }
     }
 
@@ -159,10 +167,11 @@ final class AudioManager {
     private func configureAudioSession() {
         do {
             // Ambient category mixes with background music and respects the silent switch
-            try AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
-            try AVAudioSession.sharedInstance().setActive(true)
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+            try session.setActive(true)
         } catch {
-            // Audio session configuration failed — continue without sound
+            // Audio session configuration failed, continue without sound
         }
     }
 }

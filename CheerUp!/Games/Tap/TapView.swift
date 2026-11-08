@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 // MARK: - TAP View
 // Full native implementation of the CheerUp! game vision:
@@ -9,7 +10,7 @@ struct TapView: View {
     let onExit: () -> Void
     @Environment(\.scenePhase) private var scenePhase
     @State private var engine = TapEngine()
-    @State private var timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
+    private let timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
 
     var body: some View {
         ZStack {

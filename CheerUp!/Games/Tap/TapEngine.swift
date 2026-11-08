@@ -171,14 +171,14 @@ final class TapEngine {
             instructionPrefix = LanguageManager.shared.tr("Tap", "Touchez", "Toca")
             instructionWord = cubeName(for: targetId)
             instructionColor = cubes[targetId].color
-            isCorrectAnswer = { [weak self] c in c == targetId }
+            isCorrectAnswer = { c in c == targetId }
             lastTargetColorId = targetId
 
         case .not:
             instructionPrefix = LanguageManager.shared.tr("Anything but", "Sauf", "Menos")
             instructionWord = cubeName(for: targetId)
             instructionColor = cubes[targetId].color
-            isCorrectAnswer = { [weak self] c in c != targetId }
+            isCorrectAnswer = { c in c != targetId }
             lastTargetColorId = targetId
             extraTime = 0.5
 
@@ -187,7 +187,7 @@ final class TapEngine {
             instructionPrefix = LanguageManager.shared.tr("Tap ink:", "Encre :", "Tinta:")
             instructionWord = cubeName(for: targetId)
             instructionColor = cubes[inkId].color
-            isCorrectAnswer = { [weak self] c in c == inkId }
+            isCorrectAnswer = { c in c == inkId }
             lastTargetColorId = inkId
             extraTime = 0.6
 
@@ -197,12 +197,12 @@ final class TapEngine {
             instructionWord = LanguageManager.shared.tr("COLOR", "COULEUR", "COLOR")
             instructionColor = .white
             instructionTag = ""
-            isCorrectAnswer = { [weak self] c in c == prevId }
+            isCorrectAnswer = { c in c == prevId }
             extraTime = 2.0
 
         case .lie:
             lieFakeId = (targetId + 1 + Int.random(in: 0..<3)) % 4
-            isCorrectAnswer = { [weak self] c in c == targetId }
+            isCorrectAnswer = { c in c == targetId }
             lastTargetColorId = targetId
             extraTime = 0.6
         }
