@@ -106,16 +106,16 @@ struct WheelsData {
     static let outcomes: [WheelOutcome] = [
         // Bizarre & Fun Challenges
         WheelOutcome(type: .happy, emoji: "🦩", titleEn: "Flamingo Stance", titleFr: "Flamant Rose", titleEs: "Flamenco", textEn: "Balance on one leg like a flamingo for 8 seconds.", textFr: "Tenez sur une seule jambe pendant 8s.", textEs: "Mantén el equilibrio en un pie 8s.", mood: .sus, timerSeconds: 8),
-        WheelOutcome(type: .happy, emoji: "👽", titleEn: "Alien Contact", titleFr: "Signal Alien", titleEs: "Contacto Alien", textEn: "Make high-pitched alien beeping noises right now.", textFr: "Faites des bruits d'extraterrestre suraigus.", textEs: "Haz sonidos agudos de alien ya.", mood: .wow),
+        WheelOutcome(type: .happy, emoji: "👽", titleEn: "Alien Contact", titleFr: "Signal Alien", titleEs: "Contacto Alien", textEn: "Make high pitched alien beeping noises right now.", textFr: "Faites des bruits d'extraterrestre suraigus.", textEs: "Haz sonidos agudos de alien ya.", mood: .wow),
         WheelOutcome(type: .happy, emoji: "🐱", titleEn: "Meow Order", titleFr: "Ordre Miaou", titleEs: "Orden Miau", textEn: "Meow three times with total seriousness.", textFr: "Miaulez trois fois très sérieusement.", textEs: "Maúlla 3 veces con total seriedad.", mood: .dizzy),
         WheelOutcome(type: .happy, emoji: "🕶️", titleEn: "Slow Motion", titleFr: "Mode Ralenti", titleEs: "Cámara Lenta", textEn: "Do everything in dramatic slow motion for 10 seconds.", textFr: "Bougez au ralenti pendant 10 secondes.", textEs: "Muévete en cámara lenta durante 10s.", mood: .sus, timerSeconds: 10),
-        WheelOutcome(type: .happy, emoji: "🦖", titleEn: "T-Rex Mode", titleFr: "Mode T-Rex", titleEs: "Modo T-Rex", textEn: "Tuck your elbows in and let out a tiny T-Rex roar.", textFr: "Rentrez les coudes et rugissez en T-Rex.", textEs: "Pega los codos y ruge como un T-Rex.", mood: .party),
-        WheelOutcome(type: .happy, emoji: "🧼", titleEn: "Invisible Wash", titleFr: "Savon Imaginaire", titleEs: "Jabón Invisible", textEn: "Aggressively wash hands with imaginary soap.", textFr: "Lavez-vous les mains au savon invisible.", textEs: "Lávate las manos con jabón invisible.", mood: .dizzy, timerSeconds: 8),
+        WheelOutcome(type: .happy, emoji: "🦖", titleEn: "T Rex Mode", titleFr: "Mode T Rex", titleEs: "Modo T Rex", textEn: "Tuck your elbows in and let out a tiny T Rex roar.", textFr: "Rentrez les coudes et rugissez en T Rex.", textEs: "Pega los codos y ruge como un T Rex.", mood: .party),
+        WheelOutcome(type: .happy, emoji: "🧼", titleEn: "Invisible Wash", titleFr: "Savon Imaginaire", titleEs: "Jabón Invisible", textEn: "Aggressively wash hands with imaginary soap.", textFr: "Frottez vos mains au savon invisible.", textEs: "Lávate las manos con jabón invisible.", mood: .dizzy, timerSeconds: 8),
         WheelOutcome(type: .happy, emoji: "🦀", titleEn: "Crab Walk", titleFr: "Mode Crabe", titleEs: "Cangrejo", textEn: "Take two sideways steps and snap your crab claws.", textFr: "Faites deux pas de côté en pinçant l'air.", textEs: "Da dos pasos de lado haciendo pinzas.", mood: .sus),
-        WheelOutcome(type: .happy, emoji: "🧙‍♂️", titleEn: "Cast a Spell", titleFr: "Faux Sortilège", titleEs: "Hechizo", textEn: "Point at the nearest wall and shout a made-up spell.", textFr: "Pointez le mur et criez un sort inventé.", textEs: "Apunta a la pared y grita un hechizo inventado.", mood: .wow),
+        WheelOutcome(type: .happy, emoji: "🧙‍♂️", titleEn: "Cast a Spell", titleFr: "Faux Sortilège", titleEs: "Hechizo", textEn: "Point at the nearest wall and shout a made up spell.", textFr: "Pointez le mur et criez un sort inventé.", textEs: "Apunta a la pared y grita un hechizo inventado.", mood: .wow),
         WheelOutcome(type: .happy, emoji: "🧘", titleEn: "Bizarre Zen", titleFr: "Zen Étrange", titleEs: "Zen Bizarro", textEn: "Chant a deep “Ooooom” until the timer runs out.", textFr: "Chantez un long « Oooom » jusqu'au bip.", textEs: "Entona un « Oooom » profundo hasta el timbre.", mood: .happy, timerSeconds: 8),
         WheelOutcome(type: .happy, emoji: "🤫", titleEn: "Breaking News", titleFr: "Flash Info", titleEs: "Última Hora", textEn: "Whisper urgent breaking news to your nearest object.", textFr: "Chuchotez un scoop urgent à un objet proche.", textEs: "Susurra una noticia urgente al objeto más cercano.", mood: .dizzy),
-        WheelOutcome(type: .happy, emoji: "😱", titleEn: "Soap Opera", titleFr: "Télénovela", titleEs: "Telenovela", textEn: "Gasp loudly like you just saw a telenovela plot twist.", textFr: "Prenez un air ultra choqué façon soap-opéra.", textEs: "Respira hondo con dramatismo de telenovela.", mood: .wow),
+        WheelOutcome(type: .happy, emoji: "😱", titleEn: "Soap Opera", titleFr: "Télénovela", titleEs: "Telenovela", textEn: "Gasp loudly like you just saw a telenovela plot twist.", textFr: "Prenez un air ultra choqué façon télénovela.", textEs: "Respira hondo con dramatismo de telenovela.", mood: .wow),
         WheelOutcome(type: .happy, emoji: "🐧", titleEn: "Penguin Waddle", titleFr: "Pingouin", titleEs: "Paso Pingüino", textEn: "Lock knees, flap arms, and waddle like a penguin.", textFr: "Bras collés, marchez comme un pingouin.", textEs: "Junta las rodillas y camina como pingüino.", mood: .party, timerSeconds: 7),
 
         // Chaos Outcomes
@@ -130,7 +130,7 @@ struct WheelsData {
         WheelOutcome(type: .chaos, emoji: "🤫", titleEn: "Secret Mission", titleFr: "Mission Secrète", titleEs: "Misión Secreta", textEn: "Walk like a spy. Do not blink.", textFr: "Marchez comme un espion.", textEs: "Camina como espía. No parpadees.", mood: .sus, timerSeconds: 15),
         WheelOutcome(type: .chaos, emoji: "🫠", titleEn: "CheerUp Meltdown", titleFr: "CheerUp Fond", titleEs: "CheerUp se Derrite", textEn: "CheerUp is melting into pixels.", textFr: "CheerUp fond en pixels.", textEs: "CheerUp se derrite en píxeles.", mood: .dizzy),
         WheelOutcome(type: .chaos, emoji: "🗣️", titleEn: "Backwards Talk", titleFr: "À l'envers", titleEs: "Al Revés", textEn: "Say your name backwards out loud.", textFr: "Dites votre nom à l'envers.", textEs: "Di tu nombre al revés en voz alta.", mood: .wow),
-        WheelOutcome(type: .chaos, emoji: "🌀", titleEn: "Absolute Nonsense", titleFr: "Non-sens", titleEs: "Disparate", textEn: "Banana telescope purple Tuesday.", textFr: "Banane télescope mardi violet.", textEs: "Plátano telescopio martes morado.", mood: .dizzy),
+        WheelOutcome(type: .chaos, emoji: "🌀", titleEn: "Absolute Nonsense", titleFr: "Absurde", titleEs: "Disparate", textEn: "Banana telescope purple Tuesday.", textFr: "Banane télescope mardi violet.", textEs: "Plátano telescopio martes morado.", mood: .dizzy),
         WheelOutcome(type: .chaos, emoji: "🚀", titleEn: "Rocket Launch", titleFr: "Fusée", titleEs: "Cohete", textEn: "Count 5 to 1 with rocket noises.", textFr: "Comptez 5 à 1 façon fusée.", textEs: "Cuenta 5 a 1 con ruidos de cohete.", mood: .wow, timerSeconds: 6),
         WheelOutcome(type: .chaos, emoji: "👁️", titleEn: "Stare Down", titleFr: "Fixette", titleEs: "Duelo Visual", textEn: "Stare without blinking for 8 seconds.", textFr: "Fixez 8s sans ciller.", textEs: "Mira sin parpadear durante 8s.", mood: .sus, timerSeconds: 8),
         WheelOutcome(type: .chaos, emoji: "🧊", titleEn: "Freeze Frame", titleFr: "Statue", titleEs: "Estatua", textEn: "Freeze in your current pose. Don’t move!", textFr: "Ne bougez plus d'un poil !", textEs: "¡Quédate inmóvil en tu postura actual!", mood: .wow, timerSeconds: 7),
@@ -142,7 +142,7 @@ struct WheelsData {
     static var idleLines: [String] {
         switch LanguageManager.shared.currentLanguage {
         case .french:
-            return ["Tourne-moi !", "Jour de chance ?", "Allez, tourne !", "Prêt quand tu veux !"]
+            return ["Fais tourner !", "Jour de chance ?", "Allez, tourne !", "Prêt quand tu veux !"]
         case .spanish:
             return ["¡Gírame!", "¿Día de suerte?", "¡Dale, gira!", "¡Listo cuando quieras!"]
         case .english:
@@ -153,7 +153,7 @@ struct WheelsData {
     static var spinLines: [String] {
         switch LanguageManager.shared.currentLanguage {
         case .french:
-            return ["Youhouuu !", "Ça tourne !", "Où ça s'arrête ?", "Accrochez-vous !"]
+            return ["Youhouuu !", "Ça tourne !", "Où ça s'arrête ?", "Attention !"]
         case .spanish:
             return ["¡Yujuuu!", "¡Está girando!", "¿Dónde caerá?", "¡Agárrate a tus píxeles!"]
         case .english:

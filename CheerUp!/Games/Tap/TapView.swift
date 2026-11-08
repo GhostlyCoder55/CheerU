@@ -7,6 +7,7 @@ import SwiftUI
 
 struct TapView: View {
     let onExit: () -> Void
+    @Environment(\.scenePhase) private var scenePhase
     @State private var engine = TapEngine()
     @State private var timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
 
@@ -119,8 +120,16 @@ struct TapView: View {
             engine.startGame()
         }
         .onReceive(timer) { _ in
+            guard scenePhase == .active else { return }
             guard !engine.isOver || !engine.particles.isEmpty else { return }
             engine.tick(dt: 0.05)
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase != .active {
+                engine.isLive = false
+            } else if !engine.isOver {
+                engine.isLive = true
+            }
         }
     }
 

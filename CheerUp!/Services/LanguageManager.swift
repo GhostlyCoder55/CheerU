@@ -22,19 +22,36 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 final class LanguageManager {
     static let shared = LanguageManager()
 
+    private static let languageKey = "cheerup.language"
+    private static let onboardingCompletedKey = "cheerup.language.onboarded"
+
     var currentLanguage: AppLanguage {
         didSet {
-            UserDefaults.standard.set(currentLanguage.rawValue, forKey: "cheerup.language")
+            UserDefaults.standard.set(currentLanguage.rawValue, forKey: Self.languageKey)
+        }
+    }
+
+    var hasCompletedLanguageOnboarding: Bool {
+        didSet {
+            UserDefaults.standard.set(hasCompletedLanguageOnboarding, forKey: Self.onboardingCompletedKey)
         }
     }
 
     private init() {
-        if let saved = UserDefaults.standard.string(forKey: "cheerup.language"),
+        let completed = UserDefaults.standard.bool(forKey: Self.onboardingCompletedKey)
+        self.hasCompletedLanguageOnboarding = completed
+
+        if let saved = UserDefaults.standard.string(forKey: Self.languageKey),
            let lang = AppLanguage(rawValue: saved) {
             self.currentLanguage = lang
         } else {
             self.currentLanguage = .english
         }
+    }
+
+    func selectInitialLanguage(_ language: AppLanguage) {
+        currentLanguage = language
+        hasCompletedLanguageOnboarding = true
     }
 
     var isFrench: Bool {

@@ -17,6 +17,7 @@ struct CheerUpApp: App {
 struct RootView: View {
     @State private var isShowingLaunchScreen = true
     @State private var appState = AppState()
+    @State private var languageManager = LanguageManager.shared
 
     var body: some View {
         ZStack {
@@ -27,8 +28,19 @@ struct RootView: View {
             )
             .ignoresSafeArea()
 
-            ArcadeRootView(appState: appState)
+            if !languageManager.hasCompletedLanguageOnboarding {
+                LanguageOnboardingView { chosenLanguage in
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
+                        languageManager.selectInitialLanguage(chosenLanguage)
+                    }
+                }
                 .opacity(isShowingLaunchScreen ? 0 : 1)
+                .transition(.opacity)
+            } else {
+                ArcadeRootView(appState: appState)
+                    .opacity(isShowingLaunchScreen ? 0 : 1)
+                    .transition(.opacity)
+            }
 
             if isShowingLaunchScreen {
                 LaunchScreenView()
@@ -36,10 +48,107 @@ struct RootView: View {
             }
         }
         .onAppear {
+            GameCenterManager.shared.authenticateLocalPlayer()
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
                 withAnimation(.easeInOut(duration: 0.5)) {
                     isShowingLaunchScreen = false
                 }
+            }
+        }
+    }
+}
+
+// MARK: - First-Launch MiniCheerUp! Language Welcome View
+
+struct LanguageOnboardingView: View {
+    let onSelectLanguage: (AppLanguage) -> Void
+
+    @State private var mascotMood: MascotMood = .happy
+    @State private var appeared = false
+
+    private let options: [(lang: AppLanguage, title: String)] = [
+        (.english, "English"),
+        (.french,  "Français"),
+        (.spanish, "Español")
+    ]
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: CheerUpColors.backgroundGradient,
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            VStack(spacing: Spacing.xxl) {
+                Spacer()
+
+                // MiniCheerUp! Mascot & Speech Bubble
+                VStack(spacing: 16) {
+                    CheerUpMascotView(mood: mascotMood, size: 96)
+                        .scaleEffect(appeared ? 1.0 : 0.6)
+                        .opacity(appeared ? 1 : 0)
+
+                    Text("Hi! I'm MiniCheerUp!")
+                        .font(.system(size: 18, weight: .black, design: .rounded))
+                        .foregroundStyle(CheerUpColors.deepNavy)
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                .fill(CheerUpColors.lightGrey)
+                                .shadow(color: Color.black.opacity(0.35), radius: 10, x: 0, y: 5)
+                        )
+                        .opacity(appeared ? 1 : 0)
+                        .offset(y: appeared ? 0 : 15)
+                }
+
+                // Language Selection Buttons (English, Français, Español)
+                VStack(spacing: 14) {
+                    ForEach(options, id: \.lang.id) { item in
+                        Button(action: {
+                            HapticsManager.shared.selection()
+                            AudioManager.shared.play(.pop)
+                            mascotMood = .party
+                            onSelectLanguage(item.lang)
+                        }) {
+                            HStack {
+                                Text(item.title)
+                                    .font(CheerUpFont.title3)
+                                    .foregroundStyle(CheerUpColors.lightGrey)
+
+                                Spacer()
+
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundStyle(CheerUpColors.mutedSilver)
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill(CheerUpColors.darkBlue.opacity(0.9))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                            .stroke(CheerUpColors.blueGrey.opacity(0.6), lineWidth: 1.5)
+                                    )
+                            )
+                        }
+                        .buttonStyle(PressableButtonStyle())
+                    }
+                }
+                .padding(.horizontal, Spacing.screenPadding)
+                .opacity(appeared ? 1 : 0)
+                .offset(y: appeared ? 0 : 25)
+
+                Spacer()
+            }
+            .padding(.horizontal, Spacing.screenPadding)
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
+                appeared = true
             }
         }
     }
@@ -85,7 +194,9 @@ struct ArcadeRootView: View {
 
     private let gradients: [GameIdentifier: [Color]] = [
         .tap:      CheerUpColors.GameGradient.tap,
-        .tradeOff: CheerUpColors.GameGradient.tradeOff,
+        .pingPong: CheerUpColors.GameGradient.pingPong,
+        .gravity:  CheerUpColors.GameGradient.gravity,
+        .rush:     CheerUpColors.GameGradient.rush,
         .wheels:   CheerUpColors.GameGradient.wheels,
     ]
 
@@ -130,8 +241,12 @@ struct ArcadeRootView: View {
         switch game {
         case .tap:
             TapView(onExit: { appState.exitToArcade() })
-        case .tradeOff:
-            TradeOffView(onExit: { appState.exitToArcade() })
+        case .pingPong:
+            PingPongView(onExit: { appState.exitToArcade() })
+        case .gravity:
+            GravityView(onExit: { appState.exitToArcade() })
+        case .rush:
+            RushView(onExit: { appState.exitToArcade() })
         case .wheels:
             WheelsView(onExit: { appState.exitToArcade() })
         }

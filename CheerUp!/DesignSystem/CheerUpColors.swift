@@ -34,13 +34,12 @@ enum CheerUpColors {
         static let ink   = Color(hex: 0xCCD0CF)
     }
 
-    // MARK: - Trade Off Palette
-    enum TradeOff {
-        static let fast    = Color(hex: 0xEF5350) // Red
-        static let good    = Color(hex: 0x66BB6A) // Green
-        static let cheap   = Color(hex: 0x42A5F5) // Blue
-        static let knobOff = Color(hex: 0x9BA8AB)
-        static let knobOn  = Color(hex: 0xCCD0CF)
+    // MARK: - Rush Palette (Hyper Light Drifter / Celeste Indie Pixel Palette)
+    enum Rush {
+        static let magenta = Color(hex: 0xFF2E93)
+        static let cyan    = Color(hex: 0x22D3EE)
+        static let gold    = Color(hex: 0xFFC83D)
+        static let deep    = Color(hex: 0x090D16)
     }
 
     // MARK: - Wheels Palette
@@ -56,16 +55,22 @@ enum CheerUpColors {
         static let gold     = Color(hex: 0xFFC400)
     }
 
-    // MARK: - Game Gradients
+    // MARK: - Game Gradients (Unified Luminance & Depth across all Arcade Cards)
     enum GameGradient {
         static let tap: [Color] = [
-            Color(hex: 0xB0D7D8), Color(hex: 0xF7CBCA)
+            Color(hex: 0x73A9AB), Color(hex: 0x9E6B6A)
         ]
-        static let tradeOff: [Color] = [
-            Color(hex: 0x66BB6A), Color(hex: 0x42A5F5)
+        static let pingPong: [Color] = [
+            Color(hex: 0x00A896), Color(hex: 0x253745)
+        ]
+        static let gravity: [Color] = [
+            Color(hex: 0x0EA371), Color(hex: 0x163B2C)
+        ]
+        static let rush: [Color] = [
+            Color(hex: 0xFF3396), Color(hex: 0x3D2356)
         ]
         static let wheels: [Color] = [
-            Color(hex: 0xF4470B), Color(hex: 0x7500C8)
+            Color(hex: 0xF75C22), Color(hex: 0x432357)
         ]
     }
 }

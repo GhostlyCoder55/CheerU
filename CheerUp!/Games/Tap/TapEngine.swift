@@ -152,7 +152,7 @@ final class TapEngine {
             if round >= 25 { pool.append(.lie) }
         }
 
-        var rule = forcedRule ?? (round == 1 ? .tap : pool.randomElement()!)
+        var rule = forcedRule ?? (round == 1 ? .tap : (pool.randomElement() ?? .tap))
         if rule == .prev && lastTargetColorId == nil { rule = round < 6 ? .tap : .ink }
 
         // Shuffle grid order only on higher levels (round 20+)
@@ -253,7 +253,7 @@ final class TapEngine {
 
             mascotMood = Double.random(in: 0...1) < 0.25 ? .wow : .happy
             if Double.random(in: 0...1) < 0.5 {
-                speechText = cheers.randomElement()!
+                speechText = cheers.randomElement() ?? "Nice!"
             }
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.38) { [weak self] in
@@ -261,7 +261,7 @@ final class TapEngine {
             }
         } else {
             // Wrong! No confetti when picking the wrong color
-            handleMistake(say: oopsMessages.randomElement()!)
+            handleMistake(say: oopsMessages.randomElement() ?? "Oof.")
         }
     }
 

@@ -4,6 +4,7 @@
 //
 
 import Testing
+import CoreGraphics
 @testable import CheerUp_
 
 struct CheerUp_Tests {
@@ -21,21 +22,25 @@ struct CheerUp_Tests {
         #expect(engine.cubeOrder.count == 4)
     }
 
-    @Test func tradeOffEngineConstraintParadox() async throws {
-        let engine = TradeOffEngine()
-        #expect(!engine.isFast)
-        #expect(!engine.isGood)
-        #expect(!engine.isCheap)
+    @Test func rushEngineMovementAndSurvivalScoring() async throws {
+        let engine = RushEngine()
+        engine.reset()
+        engine.setInvulnerable(for: 10.0)
+        #expect(engine.score == 0)
+        #expect(!engine.isGameOver)
 
-        // Turn on Fast, Good, Cheap
-        engine.toggle(.fast)
-        engine.toggle(.good)
-        engine.toggle(.cheap)
+        // Advance simulation by 6.0 seconds (61 steps of 0.05s = 3.05s -> 1pt, 122 steps of 0.05s = 6.1s -> 2pts)
+        for _ in 0..<61 {
+            _ = engine.update(dt: 0.05, targetShipPosition: CGPoint(x: 260, y: 120))
+        }
+        #expect(engine.shipX > 220)
+        #expect(!engine.asteroids.isEmpty)
+        #expect(engine.score >= 1)
 
-        // The paradox: when 3rd is toggled on, one must be sacrificed
-        let activeCount = [engine.isFast, engine.isGood, engine.isCheap].filter { $0 }.count
-        #expect(activeCount == 2)
-        #expect(engine.sacrificedValue == .good)
+        for _ in 0..<61 {
+            _ = engine.update(dt: 0.05, targetShipPosition: CGPoint(x: 260, y: 120))
+        }
+        #expect(engine.score >= 2)
     }
 
     @Test func audioManagerHandlesAllKenneyEffects() async throws {
@@ -134,6 +139,71 @@ struct CheerUp_Tests {
             #expect(!outcome.textEn.isEmpty)
             #expect(!outcome.textFr.isEmpty)
             #expect(!outcome.textEs.isEmpty)
+        }
+    }
+
+    @Test func pingPongEngineMovementAndRallyPhysics() async throws {
+        let engine = PingPongEngine()
+        engine.reset(mode: .endless)
+        #expect(engine.playerScore == 0)
+        #expect(engine.cpuScore == 0)
+        #expect(!engine.isGameOver)
+
+        // Advance 15 steps of 0.05s (0.75s) to pass initial serve delay (0.55s)
+        for _ in 0..<15 {
+            _ = engine.update(dt: 0.05, targetPlayerX: 220)
+        }
+        #expect(engine.ballVel.dy != 0)
+        #expect(engine.playerX > 180)
+    }
+
+    @Test func pingPongPowerUpsAndDifficultyProgression() async throws {
+        #expect(PingPongPowerUpType.allCases.count == 7)
+        let tier1 = PingPongDifficultyTier.forScore(0, rallyCount: 0)
+        let tierMax = PingPongDifficultyTier.forScore(55, rallyCount: 20)
+        #expect(tier1 == .rookie)
+        #expect(tierMax == .unstoppable)
+    }
+
+    @Test func gravityEngineMovementAndBoundaryShift() async throws {
+        let engine = GravityEngine()
+        engine.reset()
+        #expect(engine.score == 0)
+        #expect(engine.segments.count == 4)
+        #expect(engine.orientation == .south)
+        #expect(engine.spawnedMotes.count == 3)
+
+        // Advance enough steps (50 steps at 0.05s = 2.5s) for the serpent to cross the top boundary and shift gravity
+        var shifted = false
+        for _ in 0..<50 {
+            let events = engine.update(dt: 0.05)
+            if events.contains(where: {
+                if case .gravityShifted = $0 { return true }
+                return false
+            }) {
+                shifted = true
+                break
+            }
+        }
+        #expect(shifted)
+        #expect(engine.orientation != .south)
+    }
+
+    @Test func gameCenterManagerLeaderboardIDs() async throws {
+        let gcm = GameCenterManager.shared
+        #expect(gcm.leaderboardID(for: .tap) == "com.gc.CheerUp.tap.endless")
+        #expect(gcm.leaderboardID(for: .pingPong) == "com.gc.CheerUp.pingpong.endless")
+        #expect(gcm.leaderboardID(for: .gravity) == "com.gc.CheerUp.gravity.endless")
+        #expect(gcm.leaderboardID(for: .rush) == "com.gc.CheerUp.rush.endless")
+        #expect(gcm.leaderboardID(for: .wheels) == nil)
+    }
+
+    @Test func allGameIdentifiersAreConfiguredWithDescriptionsAndIcons() async throws {
+        for game in GameIdentifier.allCases {
+            #expect(!game.title.isEmpty)
+            #expect(!game.subtitle.isEmpty)
+            #expect(!game.shortDescription.isEmpty)
+            #expect(!game.symbol.isEmpty)
         }
     }
 }

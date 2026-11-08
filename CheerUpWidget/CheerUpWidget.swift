@@ -66,7 +66,7 @@ let compliments = [
     "You're a master at lifting people's spirits!",
     "Your hugs are the best!",
     "You make everyone feel welcome and included!",
-    "You're an incredible problem-solver!",
+    "You're an incredible problem solver!",
     "Your heart is as big as the universe!",
     "You inspire me every day!",
     "You're like a breath of fresh air!",
@@ -148,7 +148,7 @@ let compliments = [
     "Your ideas travel far!",
     "You radiate pure joy!",
     "Your optimism is uplifting!",
-    "You inspire self-belief!",
+    "You inspire self belief!",
     "Your humor is gold!",
     "You turn Mondays into Fridays!",
     "You make challenges exciting!",
@@ -192,7 +192,7 @@ struct CheerUpProvider: TimelineProvider {
 
         // Create entries for the next 24 hours, updating every 30 minutes
         for halfHourOffset in 0..<48 { // 48 half-hour intervals = 24 hours
-            let entryDate = Calendar.current.date(byAdding: .minute, value: halfHourOffset * 30, to: currentDate)!
+            let entryDate = Calendar.current.date(byAdding: .minute, value: halfHourOffset * 30, to: currentDate) ?? currentDate.addingTimeInterval(Double(halfHourOffset * 1800))
             let entry = CheerUpEntry(date: entryDate, compliment: compliments.randomElement() ?? "")
             entries.append(entry)
         }

@@ -28,6 +28,7 @@ final class WheelsEngine {
     // Internal timing
     private var spinDuration: Double = 4.2
     private var spinStartTime: Date?
+    private var spinElapsedTime: Double = 0.0
     private var startAngle: Double = 0
     private var targetAngle: Double = 0
     private var lastTickSegment: Int = -1
@@ -70,6 +71,7 @@ final class WheelsEngine {
 
         isSpinning = true
         spinStartTime = Date()
+        spinElapsedTime = 0.0
         spinDuration = 4.2
         lastTickSegment = -1
 
@@ -96,9 +98,9 @@ final class WheelsEngine {
     // MARK: - Frame Tick
     func tick(dt: Double) {
         // Update Wheel Spinning with Quartic Ease-Out
-        if isSpinning, let startTime = spinStartTime {
-            let elapsed = Date().timeIntervalSince(startTime)
-            let progress = min(elapsed / spinDuration, 1.0)
+        if isSpinning {
+            spinElapsedTime += dt
+            let progress = min(spinElapsedTime / spinDuration, 1.0)
 
             // Quartic ease-out deceleration: 1 - (1 - p)^4
             let eased = 1.0 - pow(1.0 - progress, 4.0)
@@ -152,7 +154,7 @@ final class WheelsEngine {
                     HapticsManager.shared.lightTap()
                 } else {
                     isTimerActive = false
-                    AudioManager.shared.play(.win)
+                    AudioManager.shared.play(.ding)
                     HapticsManager.shared.success()
                 }
             }

@@ -20,6 +20,8 @@ final class ScoreManager {
         if score > current {
             defaults.set(score, forKey: prefix + game.rawValue)
         }
+        // Unified Game Center submission across all games
+        GameCenterManager.shared.submitScore(score, for: game)
     }
 
     func allHighScores() -> [GameIdentifier: Int] {
@@ -35,7 +37,9 @@ final class ScoreManager {
 
 enum GameIdentifier: String, CaseIterable, Identifiable {
     case tap = "tap"
-    case tradeOff = "tradeOff"
+    case pingPong = "pingPong"
+    case gravity = "gravity"
+    case rush = "rush"
     case wheels = "wheels"
 
     var id: String { rawValue }
@@ -43,7 +47,9 @@ enum GameIdentifier: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .tap:      return "TAP"
-        case .tradeOff: return "TRADE OFF"
+        case .pingPong: return "PING PONG"
+        case .gravity:  return "GRAVITY"
+        case .rush:     return "RUSH"
         case .wheels:   return "WHEELS"
         }
     }
@@ -52,8 +58,12 @@ enum GameIdentifier: String, CaseIterable, Identifiable {
         switch self {
         case .tap:
             return LanguageManager.shared.tr("Reflex • Fast Taps", "Réflexes • Vitesse", "Reflejos • Velocidad")
-        case .tradeOff:
-            return LanguageManager.shared.tr("Fast, Good, Cheap", "Rapide, Bon, Pas cher", "Rápido, Bueno, Barato")
+        case .pingPong:
+            return LanguageManager.shared.tr("Arcade • Chaos Rallies", "Arcade • Échanges Chaos", "Arcade • Rallies Caos")
+        case .gravity:
+            return LanguageManager.shared.tr("Serpent • Shifting World", "Serpent • Monde Mouvant", "Serpiente • Mundo Cambiante")
+        case .rush:
+            return LanguageManager.shared.tr("Starship • Meteor Dodge", "Vaisseau • Météores", "Nave • Esquiva Meteoros")
         case .wheels:
             return LanguageManager.shared.tr("Surprise Wheel", "Roue Surprise", "Rueda Sorpresa")
         }
@@ -67,11 +77,23 @@ enum GameIdentifier: String, CaseIterable, Identifiable {
                 "Touchez la bonne couleur à temps.",
                 "Toca el color correcto a tiempo."
             )
-        case .tradeOff:
+        case .pingPong:
             return LanguageManager.shared.tr(
-                "Pick two: Fast, Good, Cheap. One value is always sacrificed.",
-                "Choisissez deux : Rapide, Bon, Pas cher. Un est sacrifié.",
-                "Elige dos: Rápido, Bueno, Barato. Uno se sacrifica siempre."
+                "Fast paced pixel table tennis with wild power ups and endless rallies.",
+                "Ping pong pixel ultra rapide avec bonus fous et échanges sans fin.",
+                "Ping pong píxel rápido con potenciadores locos y rallies sin fin."
+            )
+        case .gravity:
+            return LanguageManager.shared.tr(
+                "Guide an enchanted pixel serpent across a torus world where crossing edges shifts gravity.",
+                "Guidez un serpent pixel dans un monde torique où franchir les bords change la gravité.",
+                "Guía a una serpiente píxel en un mundo toroidal donde cruzar bordes cambia la gravedad."
+            )
+        case .rush:
+            return LanguageManager.shared.tr(
+                "Pilot a tiny pixel starship through endless meteors. Survive longer to score higher!",
+                "Pilotez un mini vaisseau pixel à travers les météores. Survivez plus longtemps pour marquer plus !",
+                "Pilota una pequeña nave píxel entre meteoros. ¡Sobrevive más tiempo para sumar puntos!"
             )
         case .wheels:
             return LanguageManager.shared.tr(
@@ -86,15 +108,21 @@ enum GameIdentifier: String, CaseIterable, Identifiable {
         switch self {
         case .tap:
             return "hand.tap.fill"
-        case .tradeOff, .wheels:
+        case .pingPong:
+            return "figure.table.tennis"
+        case .gravity:
+            return "sparkles"
+        case .rush:
+            return "airplane"
+        case .wheels:
             return "slider.horizontal.3"
         }
     }
 
     var isGame: Bool {
         switch self {
-        case .tap: return true
-        case .tradeOff, .wheels: return false
+        case .tap, .pingPong, .gravity, .rush: return true
+        case .wheels: return false
         }
     }
 }

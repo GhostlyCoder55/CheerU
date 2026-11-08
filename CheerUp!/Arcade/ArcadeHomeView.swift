@@ -12,7 +12,9 @@ struct ArcadeHomeView: View {
 
     private let games: [(game: GameIdentifier, gradient: [Color])] = [
         (.tap,      CheerUpColors.GameGradient.tap),
-        (.tradeOff, CheerUpColors.GameGradient.tradeOff),
+        (.pingPong, CheerUpColors.GameGradient.pingPong),
+        (.gravity,  CheerUpColors.GameGradient.gravity),
+        (.rush,     CheerUpColors.GameGradient.rush),
         (.wheels,   CheerUpColors.GameGradient.wheels),
     ]
 
