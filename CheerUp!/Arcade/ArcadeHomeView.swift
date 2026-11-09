@@ -28,17 +28,27 @@ struct ArcadeHomeView: View {
             )
             .ignoresSafeArea()
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
-                    header
+            GeometryReader { geometry in
+                let totalHeight = geometry.size.height
+                // Adaptive spacing & card height so all 5 cards and header fit on a single static screen without scrolling
+                let cardSpacing: CGFloat = totalHeight < 700 ? 8 : (totalHeight < 800 ? 10 : 12)
+                let headerBottomSpacing: CGFloat = totalHeight < 700 ? 8 : (totalHeight < 800 ? 12 : 16)
+                // Reserve header height (~54pt) + headerBottomSpacing + 4 card spacings + top/bottom margins
+                let reserved: CGFloat = 54 + headerBottomSpacing + (cardSpacing * 4) + 12
+                let computedCardHeight: CGFloat = max(78, min(120, (totalHeight - reserved) / 5))
 
-                    // Vertical Presentation of Mini Games & Visualizer
-                    VStack(spacing: 16) {
+                VStack(spacing: 0) {
+                    header
+                        .padding(.bottom, headerBottomSpacing)
+
+                    // Vertical Presentation of Mini Games & Visualizer (100% Static - No scrolling)
+                    VStack(spacing: cardSpacing) {
                         ForEach(Array(games.enumerated()), id: \.element.game.id) { index, item in
                             GameCardView(
                                 game: item.game,
                                 highScore: highScores[item.game] ?? 0,
                                 gradientColors: item.gradient,
+                                cardHeight: computedCardHeight,
                                 onSelect: { onSelectGame(item.game) }
                             )
                             .opacity(appeared ? 1 : 0)
@@ -50,10 +60,13 @@ struct ArcadeHomeView: View {
                             )
                         }
                     }
+
+                    Spacer(minLength: 0)
                 }
                 .padding(.horizontal, Spacing.screenPadding)
-                .padding(.top, Spacing.lg)
-                .padding(.bottom, 60)
+                .padding(.top, Spacing.xs)
+                .padding(.bottom, Spacing.xs)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         }
         .sheet(isPresented: $showSettings) {

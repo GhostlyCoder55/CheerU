@@ -27,11 +27,6 @@ final class GravityViewModel: GravitySceneDelegate {
         "¡Usa los botones de abajo! ¡Los bordes cambian la gravedad!"
     )
 
-    // Gravity Shift Banner Callout
-    var shiftBannerText: String? = nil
-    var shiftBannerColor: Color = Color(hex: 0x22D3EE)
-    private var bannerGeneration: Int = 0
-
     let scene: GravityScene
 
     private static let tutorialSeenKey = "cheerup.gravity.tutorialSeen"
@@ -70,7 +65,6 @@ final class GravityViewModel: GravitySceneDelegate {
         isPaused = false
         isGameOver = false
         isNewBest = false
-        shiftBannerText = nil
         mascotMood = .happy
         speechText = LanguageManager.shared.tr(
             "Tap the arrows below! Crossing glowing edges rotates gravity!",
@@ -135,30 +129,30 @@ final class GravityViewModel: GravitySceneDelegate {
             case .fire:
                 self.mascotMood = .party
                 self.speechText = LanguageManager.shared.tr(
-                    "FIRE ORB! Speed boost & double points! (+\(pointsAdded))",
-                    "ORBE DE FEU ! Vitesse + points doublés ! (+\(pointsAdded))",
-                    "¡ORBE DE FUEGO! ¡Velocidad y puntos dobles! (+\(pointsAdded))"
+                    "Speed boost & double points! (+\(pointsAdded))",
+                    "Vitesse + points doublés ! (+\(pointsAdded))",
+                    "¡Velocidad y puntos dobles! (+\(pointsAdded))"
                 )
             case .water:
                 self.mascotMood = .happy
                 self.speechText = LanguageManager.shared.tr(
-                    "WATER ORB! Calm, slower movement. (+\(pointsAdded))",
-                    "ORBE D'EAU ! Mouvement calme et ralenti. (+\(pointsAdded))",
-                    "¡ORBE DE AGUA! Movimiento lento y preciso. (+\(pointsAdded))"
+                    "Calm, slower movement. (+\(pointsAdded))",
+                    "Mouvement calme et ralenti. (+\(pointsAdded))",
+                    "¡Movimiento lento y preciso! (+\(pointsAdded))"
                 )
             case .earth:
                 self.mascotMood = .wow
                 self.speechText = LanguageManager.shared.tr(
-                    "EARTH ORB! Bonus +3 tail growth! (+\(pointsAdded))",
-                    "ORBE DE TERRE ! Croissance +3 segments ! (+\(pointsAdded))",
-                    "¡ORBE DE TIERRA! ¡Crecimiento +3 segmentos! (+\(pointsAdded))"
+                    "Bonus +3 tail growth! (+\(pointsAdded))",
+                    "Croissance +3 segments ! (+\(pointsAdded))",
+                    "¡Crecimiento +3 segmentos! (+\(pointsAdded))"
                 )
             case .wind:
                 self.mascotMood = .sus
                 self.speechText = LanguageManager.shared.tr(
-                    "WIND ORB! Pass safely through your tail!",
-                    "ORBE DE VENT ! Traversez votre propre corps !",
-                    "¡ORBE DE VIENTO! ¡Atraviesa tu propia cola!"
+                    "Pass safely through your tail!",
+                    "Traversez votre propre corps !",
+                    "¡Atraviesa tu propia cola!"
                 )
             }
         }
@@ -166,13 +160,7 @@ final class GravityViewModel: GravitySceneDelegate {
 
     nonisolated func sceneDidShiftGravity(_ orientation: GravityOrientation) {
         Task { @MainActor in
-            self.mascotMood = .dizzy
-            self.speechText = LanguageManager.shared.tr(
-                "Whoa! Gravity shifted: \(orientation.title)!",
-                "Waouh ! La gravité tourne : \(orientation.title) !",
-                "¡Guau! La gravedad cambió: ¡\(orientation.title)!"
-            )
-            self.triggerShiftBanner(orientation.title, color: Color(hex: 0x22D3EE))
+            self.orientation = orientation
         }
     }
 
@@ -180,13 +168,9 @@ final class GravityViewModel: GravitySceneDelegate {
         Task { @MainActor in
             self.mascotMood = .party
             self.speechText = LanguageManager.shared.tr(
-                "Wind Phase! Ghosted right through your tail!",
-                "Phase Vent ! Vous avez traversé votre queue !",
-                "¡Fase de Viento! ¡Atravesaste tu propia cola!"
-            )
-            self.triggerShiftBanner(
-                LanguageManager.shared.tr("WIND PHASE!", "PHASE VENT !", "¡FASE VIENTO!"),
-                color: Color(hex: 0xA855F7)
+                "Ghosted right through your tail!",
+                "Vous avez traversé votre queue !",
+                "¡Atravesaste tu propia cola!"
             )
         }
     }
@@ -202,23 +186,6 @@ final class GravityViewModel: GravitySceneDelegate {
                 : LanguageManager.shared.tr("Tangled in the roots! Try again?", "Emmêlé dans les racines ! On rejoue ?", "¡Enredado! ¿Otra partida?")
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                 self.isGameOver = true
-            }
-        }
-    }
-
-    private func triggerShiftBanner(_ text: String, color: Color) {
-        bannerGeneration += 1
-        let gen = bannerGeneration
-        shiftBannerColor = color
-        withAnimation(.spring(response: 0.28, dampingFraction: 0.68)) {
-            shiftBannerText = text
-        }
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 1_300_000_000)
-            if self.bannerGeneration == gen {
-                withAnimation(.easeOut(duration: 0.22)) {
-                    self.shiftBannerText = nil
-                }
             }
         }
     }
@@ -270,34 +237,10 @@ struct GravityView: View {
 
                 Spacer()
 
-                // Gravity Shift / Wind Phase Callout Pill
-                if let banner = viewModel.shiftBannerText {
-                    HStack(spacing: 6) {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 13, weight: .bold))
-                        Text(banner)
-                            .font(.system(size: 16, weight: .black, design: .rounded))
-                    }
-                    .foregroundStyle(viewModel.shiftBannerColor)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(Color(hex: 0x07140E).opacity(0.92))
-                            .overlay(
-                                Capsule()
-                                    .stroke(viewModel.shiftBannerColor.opacity(0.65), lineWidth: 1.5)
-                            )
-                    )
-                    .shadow(color: Color.black.opacity(0.45), radius: 8, y: 4)
-                    .transition(.scale(scale: 0.75).combined(with: .opacity))
-                    .allowsHitTesting(false)
-                }
-
                 // Active Elemental Timers (when active)
                 if !viewModel.activeEffects.isEmpty {
                     activeEffectsRow
-                        .padding(.horizontal, Spacing.screenPadding)
+                        .padding(.horizontal, 6)
                 }
 
                 // Tactile Arcade Directional Pad Buttons Below the Board
@@ -529,33 +472,39 @@ struct GravityView: View {
     // MARK: - Active Elemental Effects Row
 
     private var activeEffectsRow: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             ForEach(viewModel.activeEffects) { effect in
-                HStack(spacing: 6) {
+                HStack(spacing: 5) {
                     Circle()
                         .fill(effect.type.color)
-                        .frame(width: 8, height: 8)
+                        .frame(width: 7, height: 7)
 
                     Text(effect.type.shortBadge)
                         .font(.system(size: 10, weight: .black, design: .rounded))
                         .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
 
                     ZStack(alignment: .leading) {
                         Capsule()
                             .fill(Color.white.opacity(0.18))
-                            .frame(width: 28, height: 5)
+                            .frame(width: 18, height: 5)
                         Capsule()
                             .fill(effect.type.color)
-                            .frame(width: max(2, 28 * CGFloat(effect.progress)), height: 5)
+                            .frame(width: max(2, 18 * CGFloat(effect.progress)), height: 5)
                     }
 
                     Text(String(format: "%.0fs", ceil(effect.remaining)))
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .foregroundStyle(CheerUpColors.lightGrey)
                         .monospacedDigit()
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .layoutPriority(2)
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .frame(height: 30)
                 .background(Color(hex: 0x0B1E15).opacity(0.95))
                 .clipShape(Capsule())
                 .overlay(
@@ -564,34 +513,36 @@ struct GravityView: View {
                 )
             }
         }
+        .frame(minHeight: 32)
         .allowsHitTesting(false)
+        .animation(.spring(response: 0.35, dampingFraction: 0.75), value: viewModel.activeEffects)
     }
 
     // MARK: - Tactile Cross (+) Directional Pad
 
     private var directionalButtonsPad: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 6) {
             // Top arm: UP
             dPadButton(direction: .up, systemIcon: "chevron.up")
 
             // Middle arms: LEFT + Center Cross Hub + RIGHT
-            HStack(spacing: 4) {
+            HStack(spacing: 6) {
                 dPadButton(direction: .left, systemIcon: "chevron.left")
 
                 // Center Cross (+) Hub
                 ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(Color(hex: 0x0A1B13))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .stroke(Color(hex: 0x10B981).opacity(0.25), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(Color(hex: 0x10B981).opacity(0.3), lineWidth: 1.5)
                         )
 
                     Circle()
-                        .fill(Color(hex: 0x10B981).opacity(0.35))
-                        .frame(width: 10, height: 10)
+                        .fill(Color(hex: 0x10B981).opacity(0.45))
+                        .frame(width: 12, height: 12)
                 }
-                .frame(width: 48, height: 44)
+                .frame(width: 56, height: 56)
 
                 dPadButton(direction: .right, systemIcon: "chevron.right")
             }
@@ -599,7 +550,7 @@ struct GravityView: View {
             // Bottom arm: DOWN
             dPadButton(direction: .down, systemIcon: "chevron.down")
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 4)
     }
 
     private func dPadButton(direction: GravityDirection, systemIcon: String) -> some View {
@@ -608,29 +559,30 @@ struct GravityView: View {
         }) {
             ZStack {
                 // 3D Bottom Shadow Base
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .fill(Color.black.opacity(0.45))
-                    .offset(y: 3)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.black.opacity(0.5))
+                    .offset(y: 4)
 
                 // Tactile Forest Emerald & Slate Cap
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(
                         LinearGradient(
-                            colors: [Color(hex: 0x183A2A), Color(hex: 0x0E241A)],
+                            colors: [Color(hex: 0x1A4230), Color(hex: 0x0E261C)],
                             startPoint: .top,
                             endPoint: .bottom
                         )
                     )
                     .overlay(
-                        RoundedRectangle(cornerRadius: 13, style: .continuous)
-                            .stroke(Color(hex: 0x10B981).opacity(0.55), lineWidth: 1.5)
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color(hex: 0x10B981).opacity(0.65), lineWidth: 1.8)
                     )
 
                 Image(systemName: systemIcon)
-                    .font(.system(size: 18, weight: .black))
+                    .font(.system(size: 24, weight: .black))
                     .foregroundStyle(CheerUpColors.lightGrey)
             }
-            .frame(width: 56, height: 44)
+            .frame(width: 76, height: 56)
+            .contentShape(Rectangle())
         }
         .buttonStyle(CubeButtonStyle())
     }

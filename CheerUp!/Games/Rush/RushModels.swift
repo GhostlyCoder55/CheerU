@@ -6,8 +6,8 @@ import AVFoundation
 // Data structures, Game Center integration, and retro synth audio for CheerUp! Arcade: RUSH.
 
 struct RushMeteor: Identifiable, Equatable {
-    static let collisionRadius: CGFloat = 14.0
-    static let grazeRadius: CGFloat = 39.0
+    static let collisionRadius: CGFloat = 21.0
+    static let grazeRadius: CGFloat = 52.0
 
     let id: UUID = UUID()
     var x: CGFloat

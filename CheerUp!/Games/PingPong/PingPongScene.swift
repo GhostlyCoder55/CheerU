@@ -674,9 +674,6 @@ final class PingPongScene: SKScene {
                 triggerScreenShake(intensity: 8.5)
                 spawnPixelSparks(at: CGPoint(x: position.x, y: 36), color: PingPongPixelArt.shared.skColor(hex: 0xFF4B5C), count: 18)
 
-            case .callout(let text, let colorHex):
-                gameDelegate?.sceneDidTriggerCallout(text: text, colorHex: colorHex)
-
             case .stickyCaught(let position):
                 AudioManager.shared.play(.switchToggle)
                 HapticsManager.shared.lightTap()
@@ -686,6 +683,9 @@ final class PingPongScene: SKScene {
                 AudioManager.shared.play(.tap)
                 HapticsManager.shared.mediumImpact()
                 spawnPixelSparks(at: position, color: PingPongPixelArt.shared.skColor(hex: 0xFFC83D), count: 10)
+
+            case .callout(let text, let colorHex):
+                gameDelegate?.sceneDidTriggerCallout(text: text, colorHex: colorHex)
 
             case .difficultyIncreased:
                 AudioManager.shared.play(.nextLevel)

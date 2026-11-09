@@ -48,7 +48,7 @@ struct SettingsView: View {
                         HStack {
                             Text(languageManager.tr("Version", "Version", "Versión"))
                             Spacer()
-                            Text("2.0")
+                            Text("2.1")
                                 .foregroundStyle(CheerUpColors.mutedSilver)
                         }
                     } header: {

@@ -192,10 +192,10 @@ enum PingPongEvent: Equatable {
     case powerUpCollected(PingPongPowerUpType, position: CGPoint)
     case playerScored(pointsAdded: Int, newScore: Int, position: CGPoint)
     case cpuScored(newCpuScore: Int, position: CGPoint)
-    case callout(text: String, colorHex: UInt)
     case stickyCaught(position: CGPoint)
     case stickyLaunched(position: CGPoint)
     case difficultyIncreased(PingPongDifficultyTier)
+    case callout(text: String, colorHex: UInt)
     case gameOver(finalScore: Int, playerWon: Bool, isNewBest: Bool)
 }
 

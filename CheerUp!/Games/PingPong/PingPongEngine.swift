@@ -4,7 +4,7 @@ import CoreGraphics
 // MARK: - Ping Pong Engine
 // Pure 2D arcade table-tennis simulation: delta-time movement, swept collision
 // detection, AI opponent with reaction delay & imperfect accuracy, power-ups,
-// score & rally progression, and play-callout triggers.
+// score & rally progression.
 
 final class PingPongEngine {
 
@@ -385,9 +385,9 @@ final class PingPongEngine {
         scheduleAIReactionForIncomingShot()
 
         // Occasional playful arcade callouts
-        if abs(pos.x - playerX) >= halfW * 0.88 {
+        if abs(pos.x - playerX) >= halfW * 0.86 {
             triggerCallout(LanguageManager.shared.tr("NICE SAVE!", "BEL ARRÊT !", "¡GRAN SALVADA!"), hex: 0x2EDB8A, events: &events)
-        } else if effectiveSpeed > 630 {
+        } else if effectiveSpeed > 640 {
             triggerCallout(LanguageManager.shared.tr("TOO FAST!", "TROP VITE !", "¡DEMASIADO RÁPIDO!"), hex: 0xFF4B5C, events: &events)
         } else if currentRally == 8 {
             triggerCallout(LanguageManager.shared.tr("GETTING HOT!", "ÇA CHAUFFE !", "¡EN RACHA!"), hex: 0xFFC83D, events: &events)
@@ -453,14 +453,6 @@ final class PingPongEngine {
             return
         }
 
-        triggerCallout(
-            pts >= 4
-                ? LanguageManager.shared.tr("DOUBLE SMASH! +\(pts)", "DOUBLE SMASH ! +\(pts)", "¡DOBLE PUNTO! +\(pts)")
-                : LanguageManager.shared.tr("POINT! +\(pts)", "POINT ! +\(pts)", "¡PUNTO! +\(pts)"),
-            hex: 0x2EDB8A,
-            events: &events,
-            force: true
-        )
         prepareServe(towardPlayer: false, initialDelay: 0.75)
     }
 
@@ -507,23 +499,6 @@ final class PingPongEngine {
                 highestDifficultyReached = newTier
             }
             events.append(.difficultyIncreased(newTier))
-
-            let msg: String
-            switch newTier {
-            case .warmingUp:
-                msg = LanguageManager.shared.tr("GETTING HOT!", "ÇA CHAUFFE !", "¡EN RACHA!")
-            case .gettingHot:
-                msg = LanguageManager.shared.tr("TOO FAST!", "TROP VITE !", "¡MUY RÁPIDO!")
-            case .blazing:
-                msg = LanguageManager.shared.tr("CHAOS MODE!", "MODE CHAOS !", "¡MODO CAOS!")
-            case .chaosMaster, .unstoppable:
-                msg = LanguageManager.shared.tr("UNSTOPPABLE!", "INARRÊTABLE !", "¡IMPARABLE!")
-            case .rookie:
-                msg = ""
-            }
-            if !msg.isEmpty {
-                triggerCallout(msg, hex: 0xFFC83D, events: &events, force: true)
-            }
         }
     }
 
@@ -686,7 +661,7 @@ final class PingPongEngine {
 
     private func triggerCallout(_ text: String, hex: UInt, events: inout [PingPongEvent], force: Bool = false) {
         guard force || calloutCooldown <= 0 else { return }
-        calloutCooldown = 2.2
+        calloutCooldown = 2.0
         events.append(.callout(text: text, colorHex: hex))
     }
 }

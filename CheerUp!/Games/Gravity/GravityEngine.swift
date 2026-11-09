@@ -55,6 +55,10 @@ final class GravityEngine {
         isEffectActive(.fire)
     }
 
+    var isWaterCalmActive: Bool {
+        isEffectActive(.water)
+    }
+
     init() {
         reset()
     }

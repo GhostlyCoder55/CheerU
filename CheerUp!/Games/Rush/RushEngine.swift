@@ -239,8 +239,8 @@ final class RushEngine {
         let extraEndurance = min(55.0, max(0.0, elapsedTime - 90.0) * 0.65)
         let baseSpeed = CGFloat(175.0 + ramp * 150.0 + extraEndurance)
 
-        let spawnX = CGFloat.random(in: 24.0...(worldWidth - 24.0))
-        let spawnY = worldHeight + 32.0
+        let spawnX = CGFloat.random(in: 28.0...(worldWidth - 28.0))
+        let spawnY = worldHeight + 42.0
 
         let vy = -baseSpeed * CGFloat.random(in: 0.88...1.14)
         let vx = CGFloat.random(in: -32.0...32.0)
@@ -261,7 +261,7 @@ final class RushEngine {
         let gapHalfWidth: CGFloat = 58.0
         let cols = 7
         let spacing = (worldWidth - 40.0) / CGFloat(max(1, cols - 1))
-        let spawnY = worldHeight + 32.0
+        let spawnY = worldHeight + 42.0
         let ramp = min(1.0, elapsedTime / 90.0)
         let vy = -CGFloat(195.0 + ramp * 105.0)
 
@@ -354,11 +354,11 @@ final class RushEngine {
             asteroids[i].y += asteroids[i].vy * CGFloat(dt) * speedScale
             asteroids[i].rotation += asteroids[i].angularVelocity * CGFloat(dt) * speedScale
 
-            if asteroids[i].x < 18.0 {
-                asteroids[i].x = 18.0
+            if asteroids[i].x < 24.0 {
+                asteroids[i].x = 24.0
                 asteroids[i].vx = abs(asteroids[i].vx)
-            } else if asteroids[i].x > worldWidth - 18.0 {
-                asteroids[i].x = worldWidth - 18.0
+            } else if asteroids[i].x > worldWidth - 24.0 {
+                asteroids[i].x = worldWidth - 24.0
                 asteroids[i].vx = -abs(asteroids[i].vx)
             }
 
@@ -396,7 +396,7 @@ final class RushEngine {
             }
 
             // 3. Despawn off-screen bottom
-            if asteroids[i].y < -50.0 {
+            if asteroids[i].y < -60.0 {
                 asteroids.remove(at: i)
             }
         }

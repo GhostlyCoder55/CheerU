@@ -28,7 +28,7 @@ final class PingPongViewModel: PingPongSceneDelegate {
         "¡Desliza para devolver! ¡Atento a los bonos!"
     )
 
-    // Dynamic arcade callout banner ("GETTING HOT!", "TOO FAST!", etc.)
+    // Dynamic arcade callout banner ("NICE SAVE!", "TOO FAST!", etc.) positioned at bottom
     var calloutText: String? = nil
     var calloutColor: Color = .yellow
     private var calloutGeneration: Int = 0
@@ -170,13 +170,15 @@ final class PingPongViewModel: PingPongSceneDelegate {
             self.calloutGeneration += 1
             let gen = self.calloutGeneration
             self.calloutColor = Color(hex: colorHex)
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.65)) {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
                 self.calloutText = text
             }
-            try? await Task.sleep(nanoseconds: 1_350_000_000)
-            if self.calloutGeneration == gen {
-                withAnimation(.easeOut(duration: 0.22)) {
-                    self.calloutText = nil
+            Task {
+                try? await Task.sleep(nanoseconds: 1_800_000_000)
+                if self.calloutGeneration == gen {
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        self.calloutText = nil
+                    }
                 }
             }
         }
@@ -241,27 +243,6 @@ struct PingPongView: View {
                     .padding(.horizontal, Spacing.screenPadding)
 
                 Spacer()
-
-                // Playful Arcade Callout Banner ("GETTING HOT!", "TOO FAST!", etc.)
-                if let callout = viewModel.calloutText {
-                    Text(callout)
-                        .font(.system(size: 22, weight: .black, design: .rounded))
-                        .foregroundStyle(viewModel.calloutColor)
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 8)
-                        .background(
-                            Capsule()
-                                .fill(CheerUpColors.deepNavy.opacity(0.92))
-                                .overlay(
-                                    Capsule()
-                                        .stroke(viewModel.calloutColor.opacity(0.65), lineWidth: 2)
-                                )
-                        )
-                        .shadow(color: Color.black.opacity(0.45), radius: 8, y: 4)
-                        .transition(.scale(scale: 0.7).combined(with: .opacity))
-                        .allowsHitTesting(false)
-                        .padding(.bottom, 16)
-                }
 
                 // Initial One-Handed Drag Hint
                 if showDragHint && viewModel.playerScore == 0 && !viewModel.isPaused && !viewModel.isGameOver {
@@ -460,52 +441,69 @@ struct PingPongView: View {
 
     private var activePowerUpsBar: some View {
         HStack(spacing: 8) {
-            if viewModel.activePowerUps.isEmpty {
-                Text(LanguageManager.shared.tr("Hit glowing icons on the table for power ups", "Touchez les icônes sur la table pour des bonus", "Golpea los iconos de la mesa para potenciadores"))
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(CheerUpColors.mutedSilver.opacity(0.55))
-                    .frame(height: 34)
-            } else {
-                ForEach(viewModel.activePowerUps) { item in
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(item.type.color)
-                            .frame(width: 8, height: 8)
-
-                        Text(item.type.shortBadge)
-                            .font(.system(size: 11, weight: .black, design: .rounded))
-                            .foregroundStyle(.white)
-
-                        // Countdown bar
-                        ZStack(alignment: .leading) {
-                            Capsule()
-                                .fill(Color.white.opacity(0.18))
-                                .frame(width: 34, height: 6)
-                            Capsule()
-                                .fill(item.type.color)
-                                .frame(width: max(2, 34 * CGFloat(item.progress)), height: 6)
-                        }
-
-                        Text(String(format: "%.0fs", ceil(item.remaining)))
-                            .font(.system(size: 10, weight: .bold, design: .rounded))
-                            .foregroundStyle(CheerUpColors.lightGrey)
-                            .monospacedDigit()
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(CheerUpColors.darkBlue.opacity(0.92))
-                    .clipShape(Capsule())
-                    .overlay(
-                        Capsule()
-                            .stroke(item.type.color.opacity(0.6), lineWidth: 1.5)
-                    )
-                    .transition(.scale.combined(with: .opacity))
+            // Live callout comment right where "Hit glowing icons..." used to be
+            if let callout = viewModel.calloutText {
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(viewModel.calloutColor)
+                    Text(callout)
+                        .font(.system(size: 12, weight: .black, design: .rounded))
+                        .foregroundStyle(viewModel.calloutColor)
                 }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+                .frame(height: 34)
+                .background(CheerUpColors.darkBlue.opacity(0.95))
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(viewModel.calloutColor.opacity(0.65), lineWidth: 1.5)
+                )
+                .transition(.scale.combined(with: .opacity))
+            }
+
+            ForEach(viewModel.activePowerUps) { item in
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(item.type.color)
+                        .frame(width: 8, height: 8)
+
+                    Text(item.type.shortBadge)
+                        .font(.system(size: 11, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+
+                    // Countdown bar
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color.white.opacity(0.18))
+                            .frame(width: 34, height: 6)
+                        Capsule()
+                            .fill(item.type.color)
+                            .frame(width: max(2, 34 * CGFloat(item.progress)), height: 6)
+                    }
+
+                    Text(String(format: "%.0fs", ceil(item.remaining)))
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(CheerUpColors.lightGrey)
+                        .monospacedDigit()
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .frame(height: 34)
+                .background(CheerUpColors.darkBlue.opacity(0.92))
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(item.type.color.opacity(0.6), lineWidth: 1.5)
+                )
+                .transition(.scale.combined(with: .opacity))
             }
         }
         .frame(minHeight: 36)
-        .animation(.spring(response: 0.3, dampingFraction: 0.75), value: viewModel.activePowerUps.count)
         .allowsHitTesting(false)
+        .animation(.spring(response: 0.35, dampingFraction: 0.75), value: viewModel.activePowerUps)
+        .animation(.spring(response: 0.35, dampingFraction: 0.75), value: viewModel.calloutText)
     }
 
     // MARK: - Pause Overlay

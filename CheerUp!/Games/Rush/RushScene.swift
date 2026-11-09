@@ -410,16 +410,20 @@ final class RushScene: SKScene {
             spawnThrusterPixel()
         }
 
-        // 3. Sync Uniform Meteors
+        // 3. Sync Uniform Meteors (50% larger: 50x50pt)
         let sharedMeteorTex = RushPixelArt.shared.meteorTexture()
+        let meteorSize = CGSize(width: 50, height: 50)
         var activeMeteorIDs = Set<UUID>()
         for meteor in engine.asteroids {
             activeMeteorIDs.insert(meteor.id)
             let node: SKSpriteNode
             if let existing = meteorNodes[meteor.id] {
                 node = existing
+                if node.size != meteorSize {
+                    node.size = meteorSize
+                }
             } else {
-                let created = SKSpriteNode(texture: sharedMeteorTex, size: sharedMeteorTex.size())
+                let created = SKSpriteNode(texture: sharedMeteorTex, size: meteorSize)
                 meteorLayer.addChild(created)
                 meteorNodes[meteor.id] = created
                 node = created

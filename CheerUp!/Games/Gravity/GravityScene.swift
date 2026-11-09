@@ -12,8 +12,8 @@ final class GravityPixelArt {
 
     private init() {}
 
-    func serpentHeadTexture(isWindPhase: Bool, isFireBoost: Bool) -> SKTexture {
-        let key = "serpent_head_\(isWindPhase)_\(isFireBoost)"
+    func serpentHeadTexture(isWindPhase: Bool, isFireBoost: Bool, isWaterCalm: Bool = false) -> SKTexture {
+        let key = "serpent_head_\(isWindPhase)_\(isFireBoost)_\(isWaterCalm)"
         if let cached = cache[key] { return cached }
 
         // 10x10 pixel serpent head facing UP with glowing eyes & cute forked tongue
@@ -30,8 +30,22 @@ final class GravityPixelArt {
             ".........."
         ]
 
-        let primaryHex: UInt = isWindPhase ? 0xA855F7 : (isFireBoost ? 0xF59E0B : 0x10B981)
-        let highlightHex: UInt = isWindPhase ? 0xE9D5FF : (isFireBoost ? 0xFDE68A : 0x6EE7B7)
+        let primaryHex: UInt
+        let highlightHex: UInt
+        if isWindPhase {
+            primaryHex = 0xBAE6FD
+            highlightHex = 0xFFFFFF
+        } else if isWaterCalm {
+            // Calm Ocean Azure Serpent Head
+            primaryHex = 0x0284C7 // Rich Ocean Azure Blue
+            highlightHex = 0x7DD3FC // Luminous Water Glint
+        } else if isFireBoost {
+            primaryHex = 0xF59E0B
+            highlightHex = 0xFDE68A
+        } else {
+            primaryHex = 0x10B981
+            highlightHex = 0x6EE7B7
+        }
 
         let tex = renderPixelGrid(grid, pixelScale: 3, palette: [
             "1": skColor(hex: primaryHex),
@@ -44,8 +58,8 @@ final class GravityPixelArt {
         return tex
     }
 
-    func serpentBodyTexture(isEven: Bool, isWindPhase: Bool, isFireBoost: Bool) -> SKTexture {
-        let key = "serpent_body_\(isEven)_\(isWindPhase)_\(isFireBoost)"
+    func serpentBodyTexture(isEven: Bool, isWindPhase: Bool, isFireBoost: Bool, isWaterCalm: Bool = false) -> SKTexture {
+        let key = "serpent_body_\(isEven)_\(isWindPhase)_\(isFireBoost)_\(isWaterCalm)"
         if let cached = cache[key] { return cached }
 
         let grid = [
@@ -63,19 +77,28 @@ final class GravityPixelArt {
 
         let primaryHex: UInt
         let scalePatternHex: UInt
+        let outlineHex: UInt
         if isWindPhase {
-            primaryHex = isEven ? 0x9333EA : 0x7E22CE
-            scalePatternHex = 0xD8B4FE
+            primaryHex = isEven ? 0xBAE6FD : 0x7DD3FC
+            scalePatternHex = 0xFFFFFF
+            outlineHex = 0x062C1E
+        } else if isWaterCalm {
+            // Calm Ocean Azure Serpent Body
+            primaryHex = isEven ? 0x0284C7 : 0x0369A1 // Ocean azure alternating with deep water blue
+            scalePatternHex = 0x7DD3FC               // Glistening water scales
+            outlineHex = 0x075985                    // Aquatic outline
         } else if isFireBoost {
             primaryHex = isEven ? 0xF59E0B : 0xD97706
             scalePatternHex = 0xFDE68A
+            outlineHex = 0x062C1E
         } else {
             primaryHex = isEven ? 0x10B981 : 0x059669
             scalePatternHex = 0xA7F3D0
+            outlineHex = 0x062C1E
         }
 
         let tex = renderPixelGrid(grid, pixelScale: 3, palette: [
-            "1": skColor(hex: 0x062C1E),
+            "1": skColor(hex: outlineHex),
             "2": skColor(hex: primaryHex),
             "3": skColor(hex: scalePatternHex)
         ])
@@ -112,7 +135,7 @@ final class GravityPixelArt {
             ]
 
         case .water:
-            // Pixel Dewdrop Crystal
+            // Pixel Ocean Azure Dewdrop Crystal
             grid = [
                 "....11....",
                 "...1221...",
@@ -126,9 +149,9 @@ final class GravityPixelArt {
                 ".........."
             ]
             palette = [
-                "1": skColor(hex: 0x0891B2),
-                "2": skColor(hex: 0x22D3EE),
-                "3": SKColor.white
+                "1": skColor(hex: 0x075985), // Deep aquatic droplet border
+                "2": skColor(hex: 0x0284C7), // Rich ocean azure crystal body
+                "3": skColor(hex: 0xBAE6FD)  // Crisp glint highlight reflection
             ]
 
         case .earth:
@@ -153,7 +176,7 @@ final class GravityPixelArt {
             ]
 
         case .wind:
-            // Mystical Purple Swirl Feather
+            // Celestial Light Blue / Pure White Swirl
             grid = [
                 "...1111...",
                 "..122221..",
@@ -167,9 +190,9 @@ final class GravityPixelArt {
                 ".........."
             ]
             palette = [
-                "1": skColor(hex: 0x7E22CE),
-                "2": skColor(hex: 0xA855F7),
-                "3": skColor(hex: 0xF3E8FF)
+                "1": skColor(hex: 0x38BDF8),
+                "2": skColor(hex: 0xBAE6FD),
+                "3": SKColor.white
             ]
         }
 
@@ -380,7 +403,7 @@ final class GravityScene: SKScene {
 
     private func buildAtmosphericFireflies() {
         let ext = boardExtent
-        let colors: [UInt] = [0x10B981, 0xF59E0B, 0x22D3EE, 0xA855F7]
+        let colors: [UInt] = [0x10B981, 0xF59E0B, 0x0284C7, ElementalMoteType.wind.colorHex]
         for i in 0..<10 {
             let firefly = SKSpriteNode(
                 color: GravityPixelArt.shared.skColor(hex: colors[i % colors.count], alpha: 0.45),
@@ -481,6 +504,7 @@ final class GravityScene: SKScene {
         let t = engine.stepProgress
         let windActive = engine.isWindPhaseActive
         let fireActive = engine.isFireBoostActive
+        let waterActive = engine.isWaterCalmActive
 
         // Rebuild segment sprites if serpent grew
         while segmentNodes.count < segs.count {
@@ -511,11 +535,15 @@ final class GravityScene: SKScene {
             }
 
             node.position = pos
-            node.alpha = windActive ? 0.72 : 1.0
+            node.alpha = windActive ? 0.85 : 1.0
 
             if i == 0 {
                 // Serpent Head
-                node.texture = GravityPixelArt.shared.serpentHeadTexture(isWindPhase: windActive, isFireBoost: fireActive)
+                node.texture = GravityPixelArt.shared.serpentHeadTexture(
+                    isWindPhase: windActive,
+                    isFireBoost: fireActive,
+                    isWaterCalm: waterActive
+                )
                 node.size = CGSize(width: tileSize * 1.18, height: tileSize * 1.18)
                 node.zPosition = 5
                 switch engine.moveDirection {
@@ -529,7 +557,8 @@ final class GravityScene: SKScene {
                 node.texture = GravityPixelArt.shared.serpentBodyTexture(
                     isEven: i % 2 == 0,
                     isWindPhase: windActive,
-                    isFireBoost: fireActive
+                    isFireBoost: fireActive,
+                    isWaterCalm: waterActive
                 )
                 let isTail = (i == segs.count - 1)
                 let scaleFactor: CGFloat = isTail ? 0.78 : 0.96
@@ -617,7 +646,7 @@ final class GravityScene: SKScene {
                 AudioManager.shared.play(.switchToggle)
                 HapticsManager.shared.lightTap()
                 let pt = pointForCoord(coord)
-                spawnElementalParticles(at: pt, colorHex: 0xA855F7, count: 10)
+                spawnElementalParticles(at: pt, colorHex: ElementalMoteType.wind.colorHex, count: 12)
                 gameDelegate?.sceneDidPhaseThroughSelf()
 
             case .gameOver(let finalScore, let isNewBest):

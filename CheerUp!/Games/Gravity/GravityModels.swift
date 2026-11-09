@@ -124,10 +124,10 @@ enum ElementalMoteType: String, CaseIterable, Identifiable {
 
     var shortBadge: String {
         switch self {
-        case .fire:  return LanguageManager.shared.tr("FIRE • SPEED + 2X", "FEU • VITESSE", "FUEGO • VELOCIDAD")
-        case .water: return LanguageManager.shared.tr("WATER • CALM FLOW", "EAU • RALENTI", "AGUA • CALMA")
-        case .earth: return LanguageManager.shared.tr("EARTH • +3 GROWTH", "TERRE • +3 TAILLE", "TIERRA • +3 TAMAÑO")
-        case .wind:  return LanguageManager.shared.tr("WIND • PHASE BODY", "VENT • FANTÔME", "VIENTO • ETÉREO")
+        case .fire:  return LanguageManager.shared.tr("SPEED + 2X", "VITESSE + 2X", "VELOCIDAD + 2X")
+        case .water: return LanguageManager.shared.tr("CALM FLOW", "RALENTI", "CALMA")
+        case .earth: return LanguageManager.shared.tr("+3 GROWTH", "+3 TAILLE", "+3 TAMAÑO")
+        case .wind:  return LanguageManager.shared.tr("PHASE BODY", "FANTÔME", "ETÉREO")
         }
     }
 
@@ -161,18 +161,18 @@ enum ElementalMoteType: String, CaseIterable, Identifiable {
     var color: Color {
         switch self {
         case .fire:  return Color(hex: 0xF59E0B) // Warm Amber Orange
-        case .water: return Color(hex: 0x22D3EE) // Glowing Cyan
+        case .water: return Color(hex: 0x0284C7) // Ocean Azure Water Blue
         case .earth: return Color(hex: 0x10B981) // Emerald Forest Green
-        case .wind:  return Color(hex: 0xA855F7) // Mystical Purple
+        case .wind:  return Color(hex: 0xBAE6FD) // Luminous Light Blue / White
         }
     }
 
     var colorHex: UInt {
         switch self {
         case .fire:  return 0xF59E0B
-        case .water: return 0x22D3EE
+        case .water: return 0x0284C7 // Ocean Azure Water Blue
         case .earth: return 0x10B981
-        case .wind:  return 0xA855F7
+        case .wind:  return 0xBAE6FD // Light Blue / White
         }
     }
 }
