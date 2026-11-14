@@ -31,6 +31,7 @@ final class PingPongEngine {
     private(set) var longestRally: Int = 0
     private(set) var isGameOver: Bool = false
     private(set) var playerWon: Bool = false
+    private(set) var hasUsedRewardedContinue: Bool = false
 
     private(set) var difficultyTier: PingPongDifficultyTier = .rookie
     private(set) var highestDifficultyReached: PingPongDifficultyTier = .rookie
@@ -107,6 +108,7 @@ final class PingPongEngine {
         longestRally = 0
         isGameOver = false
         playerWon = false
+        hasUsedRewardedContinue = false
         difficultyTier = .rookie
         highestDifficultyReached = .rookie
 
@@ -122,6 +124,21 @@ final class PingPongEngine {
 
         isBallStuckToPlayer = false
         prepareServe(towardPlayer: false, initialDelay: 0.55)
+    }
+
+    /// Resumes the current match after a rewarded video ad with an extra attempt.
+    func continueAfterReward() {
+        guard !hasUsedRewardedContinue else { return }
+        hasUsedRewardedContinue = true
+        isGameOver = false
+        playerWon = false
+        if mode == .endless {
+            cpuScore = max(0, cpuScore - 1)
+        } else {
+            cpuScore = max(0, mode.targetScore - 1)
+        }
+        isBallStuckToPlayer = false
+        prepareServe(towardPlayer: false, initialDelay: 0.75)
     }
 
     private func prepareServe(towardPlayer: Bool, initialDelay: Double = 0.65) {

@@ -10,10 +10,13 @@ struct GameResultView: View {
     let accentColor: Color
     let onReplay: () -> Void
     let onExit: () -> Void
+    var onWatchAdContinue: (() -> Void)? = nil
 
     @State private var scoreRevealed = false
     @State private var displayedScore: Int = 0
     @State private var isNewHighScore = false
+    @State private var adStatusMessage: String? = nil
+    @State private var adManager = RewardedAdManager.shared
 
     var body: some View {
         ZStack {
@@ -64,6 +67,17 @@ struct GameResultView: View {
 
                 // Action Buttons
                 VStack(spacing: Spacing.md) {
+                    if let onWatchAdContinue {
+                        watchVideoButton(onContinue: onWatchAdContinue)
+
+                        if let adStatusMessage {
+                            Text(adStatusMessage)
+                                .font(CheerUpFont.caption)
+                                .foregroundStyle(CheerUpColors.mutedSilver)
+                                .multilineTextAlignment(.center)
+                        }
+                    }
+
                     CheerUpPrimaryButton(LanguageManager.shared.tr("Play Again", "Rejouer", "Jugar de nuevo"), icon: "arrow.clockwise", action: onReplay)
                     CheerUpSecondaryButton(LanguageManager.shared.tr("Arcade", "Arcade", "Arcade"), icon: "square.grid.2x2.fill", action: onExit)
                 }
@@ -82,6 +96,9 @@ struct GameResultView: View {
         }
         .onAppear {
             isNewHighScore = score > highScore
+            if onWatchAdContinue != nil {
+                adManager.preloadIfNeeded()
+            }
 
             let steps = min(score, 30)
             guard steps > 0 else {
@@ -107,5 +124,64 @@ struct GameResultView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func watchVideoButton(onContinue: @escaping () -> Void) -> some View {
+        Button {
+            HapticsManager.shared.selection()
+            adStatusMessage = nil
+            adManager.presentRewardedAd(
+                onRewardEarned: {
+                    onContinue()
+                },
+                onDismissedWithoutReward: {
+                    if case .failed = adManager.state {
+                        adStatusMessage = LanguageManager.shared.tr(
+                            "Video unavailable right now. You can still play again!",
+                            "Vidéo indisponible pour le moment. Tu peux rejouer !",
+                            "Video no disponible ahora. ¡Aún puedes volver a jugar!"
+                        )
+                    } else {
+                        adStatusMessage = LanguageManager.shared.tr(
+                            "Watch the full video to earn an extra try.",
+                            "Regarde la vidéo en entier pour gagner un essai.",
+                            "Mira el video completo para ganar otro intento."
+                        )
+                    }
+                }
+            )
+        } label: {
+            HStack(spacing: Spacing.sm) {
+                if adManager.state == .loading || adManager.state == .presenting {
+                    ProgressView()
+                        .tint(CheerUpColors.deepNavy)
+                } else {
+                    Image(systemName: "play.rectangle.fill")
+                        .font(.system(size: 16, weight: .bold))
+                }
+                Text(LanguageManager.shared.tr(
+                    "Watch Video – Continue",
+                    "Voir une vidéo – Continuer",
+                    "Ver vídeo – Continuar"
+                ))
+                .font(CheerUpFont.headline)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            }
+            .foregroundStyle(CheerUpColors.deepNavy)
+            .frame(maxWidth: .infinity)
+            .frame(height: 52)
+            .background(
+                LinearGradient(
+                    colors: [accentColor, accentColor.opacity(0.85)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: Spacing.buttonCornerRadius, style: .continuous))
+        }
+        .buttonStyle(PressableButtonStyle())
+        .disabled(adManager.state.isBusy)
     }
 }

@@ -18,6 +18,7 @@ final class GravityViewModel: GravitySceneDelegate {
     var isGameOver: Bool = false
     var isNewBest: Bool = false
     var showTutorial: Bool = false
+    var hasUsedRewardedContinue: Bool = false
 
     // MiniCheerUp! Mascot & Speech Bubble State
     var mascotMood: MascotMood = .happy
@@ -65,6 +66,7 @@ final class GravityViewModel: GravitySceneDelegate {
         isPaused = false
         isGameOver = false
         isNewBest = false
+        hasUsedRewardedContinue = false
         mascotMood = .happy
         speechText = LanguageManager.shared.tr(
             "Tap the arrows below! Crossing glowing edges rotates gravity!",
@@ -73,6 +75,22 @@ final class GravityViewModel: GravitySceneDelegate {
         )
         highScore = ScoreManager.shared.highScore(for: .gravity)
         scene.startNewGame()
+        GravityAudioController.shared.startBackgroundMusic()
+    }
+
+    func continueAfterReward() {
+        guard !hasUsedRewardedContinue else { return }
+        hasUsedRewardedContinue = true
+        isPaused = false
+        isGameOver = false
+        isNewBest = false
+        mascotMood = .happy
+        speechText = LanguageManager.shared.tr(
+            "Second chance! Guide the serpent!",
+            "Seconde chance ! Guidez le serpent !",
+            "¡Segunda oportunidad! ¡Guía a la serpiente!"
+        )
+        scene.continueAfterReward()
         GravityAudioController.shared.startBackgroundMusic()
     }
 
@@ -119,7 +137,9 @@ final class GravityViewModel: GravitySceneDelegate {
             if self.orientation != orientation {
                 self.orientation = orientation
             }
-            self.activeEffects = activeEffects
+            if self.activeEffects != activeEffects {
+                self.activeEffects = activeEffects
+            }
         }
     }
 
@@ -198,6 +218,7 @@ struct GravityView: View {
 
     @State private var viewModel = GravityViewModel()
     @Environment(\.scenePhase) private var scenePhase
+    @State private var hasStartedSession = false
 
     var body: some View {
         ZStack {
@@ -217,7 +238,7 @@ struct GravityView: View {
             SpriteView(
                 scene: viewModel.scene,
                 preferredFramesPerSecond: 60,
-                options: [.allowsTransparency, .ignoresSiblingOrder]
+                options: [.allowsTransparency, .ignoresSiblingOrder, .shouldCullNonVisibleNodes]
             )
             .ignoresSafeArea()
             .allowsHitTesting(false)
@@ -276,20 +297,29 @@ struct GravityView: View {
                     onExit: {
                         viewModel.stopAudioOnExit()
                         onExit()
+                    },
+                    onWatchAdContinue: viewModel.hasUsedRewardedContinue ? nil : {
+                        viewModel.continueAfterReward()
                     }
                 )
                 .zIndex(20)
             }
         }
         .onAppear {
+            guard !hasStartedSession else { return }
+            hasStartedSession = true
             viewModel.onAppearStart()
         }
         .onDisappear {
-            viewModel.stopAudioOnExit()
+            if !RewardedAdManager.shared.isPresentingAd {
+                viewModel.stopAudioOnExit()
+            }
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase != .active {
                 viewModel.pauseGame()
+            } else if !viewModel.isGameOver && !viewModel.isPaused && !viewModel.showTutorial {
+                viewModel.scene.isGamePaused = false
             }
         }
     }

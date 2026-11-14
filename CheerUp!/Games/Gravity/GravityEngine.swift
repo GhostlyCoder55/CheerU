@@ -16,6 +16,7 @@ final class GravityEngine {
     private(set) var score: Int = 0
     private(set) var motesCollectedCount: Int = 0
     private(set) var isGameOver: Bool = false
+    private(set) var hasUsedRewardedContinue: Bool = false
 
     // Serpent body: index 0 is Head, last is Tail
     private(set) var segments: [GridCoord] = []
@@ -69,6 +70,7 @@ final class GravityEngine {
         score = 0
         motesCollectedCount = 0
         isGameOver = false
+        hasUsedRewardedContinue = false
         orientation = .south
         moveDirection = .up
         queuedDirections.removeAll()
@@ -94,6 +96,27 @@ final class GravityEngine {
         spawnMote(preferredType: .earth)
         spawnMote(preferredType: .fire)
         spawnMote(preferredType: nil)
+    }
+
+    /// Continues the current run after a rewarded video ad, preserving full length, score, and entity positions,
+    /// and granting an instant white orb (transparent phase body) ability.
+    func continueAfterReward() {
+        guard !hasUsedRewardedContinue else { return }
+        hasUsedRewardedContinue = true
+        isGameOver = false
+
+        queuedDirections.removeAll()
+        pendingGrowth = 0
+        stepAccumulator = -0.35
+        stepProgress = 0
+
+        // Grant instant white orb (wind phase) ability for 7.5 seconds so the serpent is transparent
+        // and phases through its own body safely to get its feet back in the game!
+        activeEffects.removeAll { $0.type == .wind }
+        activeEffects.append(ActiveElementalEffect(type: .wind, remaining: 7.5, totalDuration: 7.5))
+        shiftGraceTimer = 3.5
+
+        // Keep all existing segments, length, score, orientation, and spawned motes intact!
     }
 
     // MARK: - Player Swipe Input (Screen-Relative!)

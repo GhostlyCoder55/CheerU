@@ -18,6 +18,9 @@ struct WheelsView: View {
                     engine.update(currentDate: newDate)
                 }
         }
+        .onAppear {
+            RewardedAdManager.shared.preloadWheelsAdIfNeeded()
+        }
     }
 
     // MARK: - Main Content Hierarchy
@@ -279,15 +282,19 @@ struct WheelsView: View {
                 Button(action: {
                     engine.spinAgain()
                 }) {
-                    Text(LanguageManager.shared.tr("SPIN AGAIN", "RETOURNER", "OTRA VEZ"))
-                        .font(.system(size: 18, weight: .black, design: .rounded))
-                        .foregroundStyle(Color.white)
-                        .tracking(1.5)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(CheerUpColors.blueGrey)
-                        .clipShape(Capsule())
-                        .shadow(color: Color.black.opacity(0.3), radius: 8, y: 4)
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 16, weight: .bold))
+                        Text(LanguageManager.shared.tr("SPIN AGAIN", "RETOURNER", "OTRA VEZ"))
+                            .font(.system(size: 18, weight: .black, design: .rounded))
+                            .tracking(1.5)
+                    }
+                    .foregroundStyle(Color.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(CheerUpColors.blueGrey)
+                    .clipShape(Capsule())
+                    .shadow(color: Color.black.opacity(0.3), radius: 8, y: 4)
                 }
                 .padding(.top, 8)
             }

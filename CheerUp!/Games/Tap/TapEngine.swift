@@ -12,6 +12,8 @@ final class TapEngine {
     var highScore: Int = 0
     var isOver: Bool = false
     var isLive: Bool = false
+    var hasUsedRewardedContinue: Bool = false
+    private var sessionGeneration: Int = 0
 
     // Mascot & Dialogue
     var mascotMood: MascotMood = .happy
@@ -96,25 +98,58 @@ final class TapEngine {
     }
 
     func startGame() {
+        sessionGeneration += 1
         lives = 3
         round = 0
         streak = 0
         isOver = false
         isLive = false
+        hasUsedRewardedContinue = false
         lastTargetColorId = nil
         particles = []
         mascotMood = .happy
         speechText = LanguageManager.shared.tr("Let's go! Tap fast, think faster.", "C'est parti ! Touchez vite.", "¡Vamos! Toca rápido.")
         AudioManager.shared.play(.pop)
 
+        let gen = sessionGeneration
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
-            self?.nextRound()
+            guard let self, self.sessionGeneration == gen else { return }
+            self.nextRound()
         }
     }
 
-    func nextRound() {
+    /// Grants one additional life/attempt (1 heart) after a rewarded video ad and resumes from the current round.
+    func continueAfterReward() {
+        guard !hasUsedRewardedContinue else { return }
+        hasUsedRewardedContinue = true
+        sessionGeneration += 1
+
+        lives = 1
+        isOver = false
+        isLive = false
+        progress = 1.0
+        timeElapsed = 0
+        showBanner = false
+        mascotMood = .happy
+        speechText = LanguageManager.shared.tr(
+            "Second chance! Let's go!",
+            "Seconde chance ! C'est parti !",
+            "¡Segunda oportunidad! ¡Vamos!"
+        )
+        AudioManager.shared.play(.pop)
+
+        let gen = sessionGeneration
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self, self.sessionGeneration == gen else { return }
+            self.nextRound(advanceRound: false)
+        }
+    }
+
+    func nextRound(advanceRound: Bool = true) {
         guard !isOver else { return }
-        round += 1
+        if advanceRound || round == 0 {
+            round += 1
+        }
         instructionTag = ""
 
         if let milestone = milestones[round] {
@@ -123,10 +158,12 @@ final class TapEngine {
             showBanner = true
             mascotMood = .wow
 
+            let gen = sessionGeneration
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) { [weak self] in
-                guard let self, !self.isOver else { return }
+                guard let self, self.sessionGeneration == gen, !self.isOver else { return }
                 self.showBanner = false
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    guard self.sessionGeneration == gen, !self.isOver else { return }
                     self.setupRound(forcedRule: milestone.rule)
                 }
             }
@@ -220,8 +257,9 @@ final class TapEngine {
             instructionColor = cubes[fakeId].color
             isLive = false
 
+            let gen = sessionGeneration
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { [weak self] in
-                guard let self, !self.isOver else { return }
+                guard let self, self.sessionGeneration == gen, !self.isOver else { return }
                 self.instructionWord = self.cubeName(for: targetId)
                 self.instructionColor = self.cubes[targetId].color
                 self.instructionTag = LanguageManager.shared.tr("Psych!", "Raté !", "¡Caíste!")
@@ -256,8 +294,10 @@ final class TapEngine {
                 speechText = cheers.randomElement() ?? "Nice!"
             }
 
+            let gen = sessionGeneration
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.38) { [weak self] in
-                self?.nextRound()
+                guard let self, self.sessionGeneration == gen else { return }
+                self.nextRound()
             }
         } else {
             // Wrong! No confetti when picking the wrong color
@@ -275,12 +315,16 @@ final class TapEngine {
 
         if lives <= 0 {
             isOver = true
+            let gen = sessionGeneration
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
-                self?.finishGame()
+                guard let self, self.sessionGeneration == gen, self.isOver else { return }
+                self.finishGame()
             }
         } else {
+            let gen = sessionGeneration
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { [weak self] in
-                self?.nextRound()
+                guard let self, self.sessionGeneration == gen else { return }
+                self.nextRound()
             }
         }
     }

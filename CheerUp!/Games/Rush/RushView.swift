@@ -15,6 +15,7 @@ final class RushViewModel: RushSceneDelegate {
     var isPaused: Bool = false
     var isGameOver: Bool = false
     var isNewBest: Bool = false
+    var hasUsedRewardedContinue: Bool = false
 
     // MiniCheerUp! Mascot & Speech Bubble State
     var mascotMood: MascotMood = .happy
@@ -41,6 +42,7 @@ final class RushViewModel: RushSceneDelegate {
         isPaused = false
         isGameOver = false
         isNewBest = false
+        hasUsedRewardedContinue = false
         bannerText = nil
         mascotMood = .happy
         speechText = LanguageManager.shared.tr(
@@ -50,6 +52,23 @@ final class RushViewModel: RushSceneDelegate {
         )
         highScore = ScoreManager.shared.highScore(for: .rush)
         scene.startNewGame()
+        RushAudioController.shared.startBackgroundMusic()
+    }
+
+    func continueAfterReward() {
+        guard !hasUsedRewardedContinue else { return }
+        hasUsedRewardedContinue = true
+        isPaused = false
+        isGameOver = false
+        isNewBest = false
+        bannerText = nil
+        mascotMood = .happy
+        speechText = LanguageManager.shared.tr(
+            "Back in flight! 3s shield active!",
+            "De retour en vol ! Bouclier 3s actif !",
+            "¡De vuelta en vuelo! ¡Escudo 3s activo!"
+        )
+        scene.continueAfterReward()
         RushAudioController.shared.startBackgroundMusic()
     }
 
@@ -86,7 +105,9 @@ final class RushViewModel: RushSceneDelegate {
                     ScoreManager.shared.updateHighScore(for: .rush, score: score)
                 }
             }
-            self.activeEffects = activeEffects
+            if self.activeEffects != activeEffects {
+                self.activeEffects = activeEffects
+            }
         }
     }
 
@@ -197,6 +218,7 @@ struct RushView: View {
     @State private var viewModel = RushViewModel()
     @Environment(\.scenePhase) private var scenePhase
     @State private var showDragHint = true
+    @State private var hasStartedSession = false
 
     var body: some View {
         ZStack {
@@ -216,7 +238,7 @@ struct RushView: View {
             SpriteView(
                 scene: viewModel.scene,
                 preferredFramesPerSecond: 60,
-                options: [.allowsTransparency, .ignoresSiblingOrder]
+                options: [.allowsTransparency, .ignoresSiblingOrder, .shouldCullNonVisibleNodes]
             )
             .ignoresSafeArea()
 
@@ -305,20 +327,29 @@ struct RushView: View {
                     onExit: {
                         viewModel.stopAudioOnExit()
                         onExit()
+                    },
+                    onWatchAdContinue: viewModel.hasUsedRewardedContinue ? nil : {
+                        viewModel.continueAfterReward()
                     }
                 )
                 .zIndex(20)
             }
         }
         .onAppear {
+            guard !hasStartedSession else { return }
+            hasStartedSession = true
             viewModel.startGame()
         }
         .onDisappear {
-            viewModel.stopAudioOnExit()
+            if !RewardedAdManager.shared.isPresentingAd {
+                viewModel.stopAudioOnExit()
+            }
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase != .active {
                 viewModel.pauseGame()
+            } else if !viewModel.isGameOver && !viewModel.isPaused {
+                viewModel.scene.isGamePaused = false
             }
         }
         .task {

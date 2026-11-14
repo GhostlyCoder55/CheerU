@@ -72,6 +72,20 @@ struct CheerUp_Tests {
         #expect(engine.selectedOutcome != nil)
     }
 
+    @Test func wheelsAdTriggersEveryFiveSpins() async throws {
+        let engine = WheelsEngine()
+        engine.resetSpinCount()
+        #expect(engine.spinCount == 0)
+
+        for i in 1...5 {
+            engine.spin()
+            engine.tick(dt: 6.0)
+            #expect(engine.spinCount == i)
+        }
+        #expect(engine.spinCount == 5)
+        #expect(engine.selectedOutcome != nil)
+    }
+
     @Test func appStateNavigation() async throws {
         let state = AppState()
         #expect(!state.isPlayingGame)
@@ -205,5 +219,155 @@ struct CheerUp_Tests {
             #expect(!game.shortDescription.isEmpty)
             #expect(!game.symbol.isEmpty)
         }
+    }
+
+    @Test func notificationManagerConfiguresTwoDayTrilingualReminders() async throws {
+        #expect(NotificationManager.twoDaysInterval == 172_800)
+        #expect(NotificationManager.reminderIdentifier == "cheerup.reminder.twoDays")
+        #expect(!NotificationManager.reminderMessages.isEmpty)
+
+        for message in NotificationManager.reminderMessages {
+            #expect(!message.en.isEmpty)
+            #expect(!message.fr.isEmpty)
+            #expect(!message.es.isEmpty)
+        }
+
+        let manager = await NotificationManager.shared
+        let enContent = await manager.makeReminderContent(for: .english, index: 0)
+        let frContent = await manager.makeReminderContent(for: .french, index: 0)
+        let esContent = await manager.makeReminderContent(for: .spanish, index: 0)
+
+        #expect(enContent.title == "CheerUp!")
+        #expect(enContent.body == NotificationManager.reminderMessages[0].en)
+        #expect(frContent.body == NotificationManager.reminderMessages[0].fr)
+        #expect(esContent.body == NotificationManager.reminderMessages[0].es)
+        #expect(enContent.sound == .default)
+    }
+
+    @Test func rewardedAdManagerPreventsDuplicatesOverlapsAndUnrewardedDismissals() async throws {
+        #expect(AdMobConfig.arcadeRewardedAdUnitID == "ca-app-pub-8075634631393674/9803471775")
+        #expect(AdMobConfig.testArcadeRewardedAdUnitID == "ca-app-pub-3940256099942544/1712485313")
+        #expect(AdMobConfig.wheelsAdUnitID == "ca-app-pub-8075634631393674/3191805276")
+        #expect(AdMobConfig.testWheelsAdUnitID == "ca-app-pub-3940256099942544/6978759866")
+
+        let manager = await RewardedAdManager.shared
+
+        // 1. Successful reward & duplicate reward prevention
+        var rewardCount = 0
+        var dismissedWithoutRewardCount = 0
+        let started = await manager.beginTestPresentation(
+            onRewardEarned: { rewardCount += 1 },
+            onDismissedWithoutReward: { dismissedWithoutRewardCount += 1 }
+        )
+        #expect(started)
+
+        // Overlapping presentation should be rejected
+        let overlapStarted = await manager.beginTestPresentation(onRewardEarned: {})
+        #expect(!overlapStarted)
+
+        // First reward confirmation succeeds; second duplicate confirmation is ignored
+        let firstMark = await manager.markRewardEarned()
+        let secondMark = await manager.markRewardEarned()
+        #expect(firstMark)
+        #expect(!secondMark)
+
+        await manager.completePresentation(didFailToPresent: false)
+        #expect(rewardCount == 1)
+        #expect(dismissedWithoutRewardCount == 0)
+
+        // 2. Cancelled ad (dismissed without reward)
+        var cancelledRewardCount = 0
+        var cancelledDismissCount = 0
+        _ = await manager.beginTestPresentation(
+            onRewardEarned: { cancelledRewardCount += 1 },
+            onDismissedWithoutReward: { cancelledDismissCount += 1 }
+        )
+        await manager.completePresentation(didFailToPresent: false)
+        #expect(cancelledRewardCount == 0)
+        #expect(cancelledDismissCount == 1)
+
+        // 3. Failed presentation
+        var failedRewardCount = 0
+        var failedDismissCount = 0
+        _ = await manager.beginTestPresentation(
+            onRewardEarned: { failedRewardCount += 1 },
+            onDismissedWithoutReward: { failedDismissCount += 1 }
+        )
+        _ = await manager.markRewardEarned()
+        await manager.completePresentation(didFailToPresent: true, errorMessage: "Network error")
+        #expect(failedRewardCount == 0)
+        #expect(failedDismissCount == 1)
+        let currentState = await manager.state
+        #expect(currentState == .failed("Network error"))
+    }
+
+    @Test func supportedGamesContinueAfterRewardedAd() async throws {
+        // Tap: gets 1 heart back, preserves round/score, allows continue only once per run
+        let tap = TapEngine()
+        tap.startGame()
+        tap.lives = 0
+        tap.round = 5
+        tap.isOver = true
+        #expect(!tap.hasUsedRewardedContinue)
+        tap.continueAfterReward()
+        #expect(!tap.isOver)
+        #expect(tap.lives == 1)
+        #expect(tap.round == 5)
+        #expect(tap.hasUsedRewardedContinue)
+        // Second continue in same run is blocked
+        tap.lives = 0
+        tap.isOver = true
+        tap.continueAfterReward()
+        #expect(tap.isOver)
+        #expect(tap.lives == 0)
+        // Starting a new game resets one-time continue
+        tap.startGame()
+        #expect(!tap.hasUsedRewardedContinue)
+
+        // Rush: preserves score, ship position, asteroid field, grants 3.5s invulnerability, one-time per run
+        let rush = RushEngine()
+        rush.reset()
+        rush.setInvulnerable(for: 10.0)
+        for _ in 0..<61 {
+            _ = rush.update(dt: 0.05, targetShipPosition: nil)
+        }
+        let rushScoreBefore = rush.score
+        #expect(rushScoreBefore >= 1)
+        #expect(!rush.hasUsedRewardedContinue)
+        rush.continueAfterReward()
+        #expect(!rush.isGameOver)
+        #expect(rush.invulnerabilityTimer == 3.5)
+        #expect(rush.score == rushScoreBefore)
+        #expect(rush.hasUsedRewardedContinue)
+        for _ in 0..<61 {
+            _ = rush.update(dt: 0.05, targetShipPosition: nil)
+        }
+        #expect(rush.score > rushScoreBefore)
+        rush.reset()
+        #expect(!rush.hasUsedRewardedContinue)
+
+        // Gravity: preserves score, serpent segments/length, grants white orb transparent ability, one-time per run
+        let gravity = GravityEngine()
+        gravity.reset()
+        let initialSnakeLength = gravity.segments.count
+        #expect(!gravity.hasUsedRewardedContinue)
+        gravity.continueAfterReward()
+        #expect(!gravity.isGameOver)
+        #expect(gravity.segments.count == initialSnakeLength)
+        #expect(gravity.isWindPhaseActive)
+        #expect(gravity.hasUsedRewardedContinue)
+        gravity.reset()
+        #expect(!gravity.hasUsedRewardedContinue)
+
+        // Ping Pong: preserves playerScore, undoes fatal miss, one-time per run
+        let pingPong = PingPongEngine()
+        pingPong.reset(mode: .endless)
+        #expect(!pingPong.hasUsedRewardedContinue)
+        pingPong.continueAfterReward()
+        #expect(!pingPong.isGameOver)
+        #expect(pingPong.cpuScore == 0)
+        #expect(pingPong.hasUsedRewardedContinue)
+        pingPong.reset(mode: .endless)
+        #expect(!pingPong.hasUsedRewardedContinue)
     }
 }

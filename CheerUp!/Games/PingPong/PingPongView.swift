@@ -19,6 +19,7 @@ final class PingPongViewModel: PingPongSceneDelegate {
     var isGameOver: Bool = false
     var playerWon: Bool = false
     var isNewBest: Bool = false
+    var hasUsedRewardedContinue: Bool = false
 
     // MiniCheerUp! Mascot & Speech Bubble State
     var mascotMood: MascotMood = .happy
@@ -49,6 +50,7 @@ final class PingPongViewModel: PingPongSceneDelegate {
         isGameOver = false
         playerWon = false
         isNewBest = false
+        hasUsedRewardedContinue = false
         calloutText = nil
         mascotMood = .happy
         speechText = LanguageManager.shared.tr(
@@ -58,6 +60,23 @@ final class PingPongViewModel: PingPongSceneDelegate {
         )
         highScore = ScoreManager.shared.highScore(for: .pingPong)
         scene.startNewGame(mode: self.mode)
+    }
+
+    func continueAfterReward() {
+        guard !hasUsedRewardedContinue else { return }
+        hasUsedRewardedContinue = true
+        isPaused = false
+        isGameOver = false
+        playerWon = false
+        isNewBest = false
+        calloutText = nil
+        mascotMood = .happy
+        speechText = LanguageManager.shared.tr(
+            "Second chance! Ready to rally!",
+            "Seconde chance ! Prêt pour l'échange !",
+            "¡Segunda oportunidad! ¡Listo para jugar!"
+        )
+        scene.continueAfterReward()
     }
 
     func switchMode(_ newMode: PingPongMode) {
@@ -149,7 +168,9 @@ final class PingPongViewModel: PingPongSceneDelegate {
             if self.rally != rally {
                 self.rally = rally
             }
-            self.activePowerUps = activePowerUps
+            if self.activePowerUps != activePowerUps {
+                self.activePowerUps = activePowerUps
+            }
         }
     }
 
@@ -213,6 +234,7 @@ struct PingPongView: View {
     @State private var viewModel = PingPongViewModel()
     @Environment(\.scenePhase) private var scenePhase
     @State private var showDragHint = true
+    @State private var hasStartedSession = false
 
     var body: some View {
         ZStack {
@@ -228,7 +250,7 @@ struct PingPongView: View {
             SpriteView(
                 scene: viewModel.scene,
                 preferredFramesPerSecond: 60,
-                options: [.allowsTransparency, .ignoresSiblingOrder]
+                options: [.allowsTransparency, .ignoresSiblingOrder, .shouldCullNonVisibleNodes]
             )
             .ignoresSafeArea()
 
@@ -285,17 +307,24 @@ struct PingPongView: View {
                     onReplay: {
                         viewModel.startGame()
                     },
-                    onExit: onExit
+                    onExit: onExit,
+                    onWatchAdContinue: (viewModel.playerWon || viewModel.hasUsedRewardedContinue) ? nil : {
+                        viewModel.continueAfterReward()
+                    }
                 )
                 .zIndex(20)
             }
         }
         .onAppear {
+            guard !hasStartedSession else { return }
+            hasStartedSession = true
             viewModel.startGame(mode: .endless)
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase != .active {
                 viewModel.pauseGame()
+            } else if !viewModel.isGameOver && !viewModel.isPaused {
+                viewModel.scene.isGamePaused = false
             }
         }
         .task {

@@ -30,6 +30,7 @@ final class RushEngine {
     private(set) var score: Int = 0
     private(set) var nearMissStreak: Int = 0
     private(set) var isGameOver: Bool = false
+    private(set) var hasUsedRewardedContinue: Bool = false
     private(set) var elapsedTime: Double = 0.0
 
     private(set) var asteroids: [RushMeteor] = []
@@ -73,6 +74,7 @@ final class RushEngine {
         score = 0
         nearMissStreak = 0
         isGameOver = false
+        hasUsedRewardedContinue = false
         elapsedTime = 0.0
 
         shipX = worldWidth * 0.5
@@ -98,6 +100,23 @@ final class RushEngine {
 
     func setInvulnerable(for duration: Double) {
         invulnerabilityTimer = duration
+    }
+
+    /// Resumes the current run after a rewarded video ad, preserving ship position, asteroid field, and score.
+    func continueAfterReward() {
+        guard !hasUsedRewardedContinue else { return }
+        hasUsedRewardedContinue = true
+        isGameOver = false
+
+        shipVX = 0.0
+        shipTilt = 0.0
+
+        // Clear only immediate meteors dangerously close to the ship
+        asteroids.removeAll { meteor in
+            hypot(meteor.x - shipX, meteor.y - shipY) < 95.0
+        }
+
+        invulnerabilityTimer = 3.5
     }
 
     // MARK: - Frame Update

@@ -284,6 +284,9 @@ final class GravityScene: SKScene {
 
     private var lastUpdateTime: TimeInterval?
     private var currentRenderedOrientation: GravityOrientation = .south
+    private var lastReportedScore: Int = -1
+    private var lastReportedOrientation: GravityOrientation? = nil
+    private var lastReportedEffectSeconds: [String: Int] = [:]
 
     var isGamePaused: Bool = false {
         didSet {
@@ -467,8 +470,23 @@ final class GravityScene: SKScene {
 
         lastUpdateTime = nil
         isGamePaused = false
+        lastReportedScore = -1
+        lastReportedOrientation = nil
+        lastReportedEffectSeconds.removeAll()
         syncVisualsWithEngine()
-        notifyStateChange()
+        notifyStateChange(force: true)
+    }
+
+    func continueAfterReward() {
+        engine.continueAfterReward()
+        // Preserves serpent segments, length, motes, and orientation upon resume!
+        lastUpdateTime = nil
+        isGamePaused = false
+        lastReportedScore = -1
+        lastReportedOrientation = nil
+        lastReportedEffectSeconds.removeAll()
+        syncVisualsWithEngine()
+        notifyStateChange(force: true)
     }
 
     func handleSwipe(_ screenDirection: GravityDirection) {
@@ -535,15 +553,20 @@ final class GravityScene: SKScene {
             }
 
             node.position = pos
-            node.alpha = windActive ? 0.85 : 1.0
+            node.alpha = windActive ? 0.65 : 1.0
+            node.color = .white
+            node.colorBlendFactor = windActive ? 0.45 : 0.0
 
             if i == 0 {
                 // Serpent Head
-                node.texture = GravityPixelArt.shared.serpentHeadTexture(
+                let headTex = GravityPixelArt.shared.serpentHeadTexture(
                     isWindPhase: windActive,
                     isFireBoost: fireActive,
                     isWaterCalm: waterActive
                 )
+                if node.texture !== headTex {
+                    node.texture = headTex
+                }
                 node.size = CGSize(width: tileSize * 1.18, height: tileSize * 1.18)
                 node.zPosition = 5
                 switch engine.moveDirection {
@@ -554,12 +577,15 @@ final class GravityScene: SKScene {
                 }
             } else {
                 // Serpent Body & Tail taper
-                node.texture = GravityPixelArt.shared.serpentBodyTexture(
+                let bodyTex = GravityPixelArt.shared.serpentBodyTexture(
                     isEven: i % 2 == 0,
                     isWindPhase: windActive,
                     isFireBoost: fireActive,
                     isWaterCalm: waterActive
                 )
+                if node.texture !== bodyTex {
+                    node.texture = bodyTex
+                }
                 let isTail = (i == segs.count - 1)
                 let scaleFactor: CGFloat = isTail ? 0.78 : 0.96
                 node.size = CGSize(width: tileSize * scaleFactor, height: tileSize * scaleFactor)
@@ -720,7 +746,22 @@ final class GravityScene: SKScene {
         ]))
     }
 
-    private func notifyStateChange() {
+    private func notifyStateChange(force: Bool = false) {
+        var currentSeconds: [String: Int] = [:]
+        for effect in engine.activeEffects {
+            currentSeconds[effect.id] = max(1, Int(ceil(effect.remaining)))
+        }
+
+        let scoreChanged = engine.score != lastReportedScore
+        let orientationChanged = engine.orientation != lastReportedOrientation
+        let effectsChanged = currentSeconds != lastReportedEffectSeconds
+
+        guard force || scoreChanged || orientationChanged || effectsChanged else { return }
+
+        lastReportedScore = engine.score
+        lastReportedOrientation = engine.orientation
+        lastReportedEffectSeconds = currentSeconds
+
         gameDelegate?.sceneDidUpdateState(
             score: engine.score,
             orientation: engine.orientation,

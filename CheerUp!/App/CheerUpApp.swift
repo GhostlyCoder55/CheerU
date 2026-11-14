@@ -15,6 +15,7 @@ struct CheerUpApp: App {
 // MARK: - Root View with Launch Screen
 
 struct RootView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var isShowingLaunchScreen = true
     @State private var appState = AppState()
     @State private var languageManager = LanguageManager.shared
@@ -49,9 +50,19 @@ struct RootView: View {
         }
         .onAppear {
             GameCenterManager.shared.authenticateLocalPlayer()
+            RewardedAdManager.shared.startSDKIfNeeded()
+            RewardedAdManager.shared.preloadAllIfNeeded()
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
                 withAnimation(.easeInOut(duration: 0.5)) {
                     isShowingLaunchScreen = false
+                }
+            }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard languageManager.hasCompletedLanguageOnboarding else { return }
+            if newPhase == .active || newPhase == .background {
+                Task {
+                    await NotificationManager.shared.refreshScheduleIfNeeded()
                 }
             }
         }
@@ -234,6 +245,9 @@ struct ArcadeRootView: View {
         }
         .animation(CheerUpAnimation.fadeMedium, value: appState.isPlayingGame)
         .animation(CheerUpAnimation.fadeMedium, value: appState.showingIntro)
+        .task {
+            await NotificationManager.shared.requestAuthorizationIfNeeded()
+        }
     }
 
     @ViewBuilder

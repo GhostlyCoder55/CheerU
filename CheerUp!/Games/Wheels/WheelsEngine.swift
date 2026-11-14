@@ -25,6 +25,10 @@ final class WheelsEngine {
     // Confetti Particles
     var particles: [WheelsConfettiParticle] = []
 
+    // Spin Tracking (Non-skip video ad triggers every 5 spins)
+    private static let spinCountKey = "cheerup.wheels.spinCount"
+    var spinCount: Int = 0
+
     // Internal timing
     private var spinDuration: Double = 4.2
     private var spinStartTime: Date?
@@ -35,9 +39,23 @@ final class WheelsEngine {
     private var timerCountdownInterval: Double = 0
     private var lastFrameDate: Date?
 
+    init() {
+        self.spinCount = UserDefaults.standard.integer(forKey: Self.spinCountKey)
+    }
+
+    func resetSpinCount() {
+        spinCount = 0
+        UserDefaults.standard.set(0, forKey: Self.spinCountKey)
+    }
+
     // MARK: - Spin Trigger
     func spin() {
         guard !isSpinning else { return }
+
+        // Preload next ad in advance so it's ready without delay
+        Task { @MainActor in
+            RewardedAdManager.shared.preloadWheelsAdIfNeeded()
+        }
 
         // Close existing sheet & reset flags
         showResultSheet = false
@@ -165,6 +183,10 @@ final class WheelsEngine {
     private func finishSpin() {
         guard let outcome = selectedOutcome else { return }
 
+        spinCount += 1
+        UserDefaults.standard.set(spinCount, forKey: Self.spinCountKey)
+        let shouldShowAd = (spinCount % 5 == 0)
+
         // Set Mascot Reaction
         mascotMood = outcome.mood
         switch outcome.type {
@@ -192,7 +214,7 @@ final class WheelsEngine {
         // Initialize Countdown Timer if required
         if let sec = outcome.timerSeconds {
             countdownRemaining = sec
-            isTimerActive = true
+            isTimerActive = !shouldShowAd // Pause timer countdown while ad video plays
             timerCountdownInterval = 0
         }
 
@@ -200,6 +222,32 @@ final class WheelsEngine {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) {
                 self.showResultSheet = true
+            }
+
+            // Every 5 spins: present non-skip video ad after the user sees their dare/challenge
+            if shouldShowAd {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                    Task { @MainActor in
+                        RewardedAdManager.shared.presentWheelsAd(
+                            onRewardEarned: {
+                                // Ad completed: return to the same dare/challenge card and resume timer
+                                self.showResultSheet = true
+                                if outcome.timerSeconds != nil && self.countdownRemaining > 0 {
+                                    self.isTimerActive = true
+                                }
+                                RewardedAdManager.shared.preloadWheelsAdIfNeeded()
+                            },
+                            onDismissedWithoutReward: {
+                                // Ad dismissed: return to the same dare/challenge card and resume timer
+                                self.showResultSheet = true
+                                if outcome.timerSeconds != nil && self.countdownRemaining > 0 {
+                                    self.isTimerActive = true
+                                }
+                                RewardedAdManager.shared.preloadWheelsAdIfNeeded()
+                            }
+                        )
+                    }
+                }
             }
         }
     }

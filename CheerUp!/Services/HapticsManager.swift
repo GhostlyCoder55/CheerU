@@ -12,14 +12,35 @@ final class HapticsManager: @unchecked Sendable {
         set { UserDefaults.standard.set(newValue, forKey: "cheerup.haptics.enabled") }
     }
 
+    private let lightGenerator = UIImpactFeedbackGenerator(style: .light)
+    private let mediumGenerator = UIImpactFeedbackGenerator(style: .medium)
+    private let heavyGenerator = UIImpactFeedbackGenerator(style: .heavy)
+    private let notificationGenerator = UINotificationFeedbackGenerator()
+    private let selectionGenerator = UISelectionFeedbackGenerator()
+
     private init() {
         if UserDefaults.standard.object(forKey: "cheerup.haptics.enabled") == nil {
             UserDefaults.standard.set(true, forKey: "cheerup.haptics.enabled")
         }
+        prepare()
     }
 
     func setEnabled(_ enabled: Bool) {
         isEnabled = enabled
+        if enabled {
+            prepare()
+        }
+    }
+
+    func prepare() {
+        runOnMain { [weak self] in
+            guard let self else { return }
+            self.lightGenerator.prepare()
+            self.mediumGenerator.prepare()
+            self.heavyGenerator.prepare()
+            self.selectionGenerator.prepare()
+            self.notificationGenerator.prepare()
+        }
     }
 
     private func runOnMain(_ action: @escaping () -> Void) {
@@ -35,65 +56,85 @@ final class HapticsManager: @unchecked Sendable {
 
     /// Light tap — correct selection, bubble pop, needle tick
     func lightTap() {
-        runOnMain {
-            let generator = UIImpactFeedbackGenerator(style: .light)
-            generator.impactOccurred()
+        runOnMain { [weak self] in
+            guard let self else { return }
+            self.lightGenerator.impactOccurred()
+            self.lightGenerator.prepare()
         }
     }
 
     /// Medium impact — score milestone, combo, wheel spin
     func mediumImpact() {
-        runOnMain {
-            let generator = UIImpactFeedbackGenerator(style: .medium)
-            generator.impactOccurred()
+        runOnMain { [weak self] in
+            guard let self else { return }
+            self.mediumGenerator.impactOccurred()
+            self.mediumGenerator.prepare()
         }
     }
 
     /// Heavy impact — collision, wrong tap, chaos reveal
     func heavyImpact() {
-        runOnMain {
-            let generator = UIImpactFeedbackGenerator(style: .heavy)
-            generator.impactOccurred()
+        runOnMain { [weak self] in
+            guard let self else { return }
+            self.heavyGenerator.impactOccurred()
+            self.heavyGenerator.prepare()
         }
     }
 
     /// Flexible impact feedback
     func impact(style: UIImpactFeedbackGenerator.FeedbackStyle = .medium) {
-        runOnMain {
-            let generator = UIImpactFeedbackGenerator(style: style)
-            generator.impactOccurred()
+        runOnMain { [weak self] in
+            guard let self else { return }
+            switch style {
+            case .light:
+                self.lightGenerator.impactOccurred()
+                self.lightGenerator.prepare()
+            case .medium:
+                self.mediumGenerator.impactOccurred()
+                self.mediumGenerator.prepare()
+            case .heavy, .rigid, .soft:
+                self.heavyGenerator.impactOccurred()
+                self.heavyGenerator.prepare()
+            @unknown default:
+                self.mediumGenerator.impactOccurred()
+                self.mediumGenerator.prepare()
+            }
         }
     }
 
     /// Success — round complete, high score, happy outcome
     func success() {
-        runOnMain {
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
+        runOnMain { [weak self] in
+            guard let self else { return }
+            self.notificationGenerator.notificationOccurred(.success)
+            self.notificationGenerator.prepare()
         }
     }
 
     /// Warning — time running low
     func warning() {
-        runOnMain {
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.warning)
+        runOnMain { [weak self] in
+            guard let self else { return }
+            self.notificationGenerator.notificationOccurred(.warning)
+            self.notificationGenerator.prepare()
         }
     }
 
     /// Error — wrong selection, timeout
     func error() {
-        runOnMain {
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.error)
+        runOnMain { [weak self] in
+            guard let self else { return }
+            self.notificationGenerator.notificationOccurred(.error)
+            self.notificationGenerator.prepare()
         }
     }
 
     /// Soft selection — UI navigation, buttons
     func selection() {
-        runOnMain {
-            let generator = UISelectionFeedbackGenerator()
-            generator.selectionChanged()
+        runOnMain { [weak self] in
+            guard let self else { return }
+            self.selectionGenerator.selectionChanged()
+            self.selectionGenerator.prepare()
         }
     }
 }

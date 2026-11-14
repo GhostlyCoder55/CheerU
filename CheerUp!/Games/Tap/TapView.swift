@@ -10,6 +10,8 @@ struct TapView: View {
     let onExit: () -> Void
     @Environment(\.scenePhase) private var scenePhase
     @State private var engine = TapEngine()
+    @State private var pausedByScenePhase = false
+    @State private var hasStartedSession = false
     private let timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -90,18 +92,20 @@ struct TapView: View {
             }
 
             // Canvas: Wheels-style Confetti Explosion
-            Canvas { context, _ in
-                for p in engine.particles {
-                    var copy = context
-                    copy.opacity = p.opacity
-                    copy.translateBy(x: p.x, y: p.y)
-                    copy.rotate(by: Angle(degrees: p.rotation))
-                    let rect = CGRect(x: -p.size / 2, y: -p.size * 0.325, width: p.size, height: p.size * 0.65)
-                    copy.fill(Path(rect), with: .color(p.color))
+            if !engine.particles.isEmpty {
+                Canvas { context, _ in
+                    for p in engine.particles {
+                        var copy = context
+                        copy.opacity = p.opacity
+                        copy.translateBy(x: p.x, y: p.y)
+                        copy.rotate(by: Angle(degrees: p.rotation))
+                        let rect = CGRect(x: -p.size / 2, y: -p.size * 0.325, width: p.size, height: p.size * 0.65)
+                        copy.fill(Path(rect), with: .color(p.color))
+                    }
                 }
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
             }
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
 
             // Game Over Result Overlay
             if engine.isOver {
@@ -113,11 +117,16 @@ struct TapView: View {
                     onReplay: {
                         engine.startGame()
                     },
-                    onExit: onExit
+                    onExit: onExit,
+                    onWatchAdContinue: engine.hasUsedRewardedContinue ? nil : {
+                        engine.continueAfterReward()
+                    }
                 )
             }
         }
         .onAppear {
+            guard !hasStartedSession else { return }
+            hasStartedSession = true
             engine.startGame()
         }
         .onReceive(timer) { _ in
@@ -127,9 +136,15 @@ struct TapView: View {
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase != .active {
-                engine.isLive = false
-            } else if !engine.isOver {
+                if engine.isLive {
+                    pausedByScenePhase = true
+                    engine.isLive = false
+                }
+            } else if pausedByScenePhase && !engine.isOver {
+                pausedByScenePhase = false
                 engine.isLive = true
+            } else {
+                pausedByScenePhase = false
             }
         }
     }

@@ -259,6 +259,10 @@ final class PingPongScene: SKScene {
     private var lastUpdateTime: TimeInterval?
     private var worldOrigin: CGPoint = .zero
     private var currentRenderedPaddleWidth: CGFloat = 0
+    private var lastReportedPlayerScore: Int = -1
+    private var lastReportedCpuScore: Int = -1
+    private var lastReportedRally: Int = -1
+    private var lastReportedPowerUpSeconds: [String: Int] = [:]
 
     var isGamePaused: Bool = false {
         didSet {
@@ -492,8 +496,29 @@ final class PingPongScene: SKScene {
         activeTouch = nil
         lastUpdateTime = nil
         isGamePaused = false
+        lastReportedPlayerScore = -1
+        lastReportedCpuScore = -1
+        lastReportedRally = -1
+        lastReportedPowerUpSeconds.removeAll()
         syncVisualsWithEngine()
-        notifyStateChange()
+        notifyStateChange(force: true)
+    }
+
+    func continueAfterReward() {
+        engine.continueAfterReward()
+        fxLayer.removeAllChildren()
+        trailHistory.removeAll()
+        trailNodes.forEach { $0.isHidden = true }
+        targetPlayerX = nil
+        activeTouch = nil
+        lastUpdateTime = nil
+        isGamePaused = false
+        lastReportedPlayerScore = -1
+        lastReportedCpuScore = -1
+        lastReportedRally = -1
+        lastReportedPowerUpSeconds.removeAll()
+        syncVisualsWithEngine()
+        notifyStateChange(force: true)
     }
 
     // MARK: - Frame Update Loop (60 FPS Delta-Time)
@@ -707,7 +732,24 @@ final class PingPongScene: SKScene {
         }
     }
 
-    private func notifyStateChange() {
+    private func notifyStateChange(force: Bool = false) {
+        var currentSeconds: [String: Int] = [:]
+        for powerUp in engine.activePowerUps {
+            currentSeconds[powerUp.id] = max(1, Int(ceil(powerUp.remaining)))
+        }
+
+        let playerScoreChanged = engine.playerScore != lastReportedPlayerScore
+        let cpuScoreChanged = engine.cpuScore != lastReportedCpuScore
+        let rallyChanged = engine.currentRally != lastReportedRally
+        let powerUpsChanged = currentSeconds != lastReportedPowerUpSeconds
+
+        guard force || playerScoreChanged || cpuScoreChanged || rallyChanged || powerUpsChanged else { return }
+
+        lastReportedPlayerScore = engine.playerScore
+        lastReportedCpuScore = engine.cpuScore
+        lastReportedRally = engine.currentRally
+        lastReportedPowerUpSeconds = currentSeconds
+
         gameDelegate?.sceneDidUpdateState(
             playerScore: engine.playerScore,
             cpuScore: engine.cpuScore,

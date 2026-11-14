@@ -327,6 +327,34 @@ final class RushScene: SKScene {
         removeAction(forKey: "crashSequence")
     }
 
+    func continueAfterReward() {
+        removeAction(forKey: "crashSequence")
+        engine.continueAfterReward()
+
+        worldNode.removeAllActions()
+        worldNode.position = .zero
+        shipNode.removeAllActions()
+        shipNode.isHidden = false
+        shipNode.alpha = 1.0
+
+        // Prune only nodes whose meteors were cleared near the ship
+        let activeIDs = Set(engine.asteroids.map { $0.id })
+        for (id, node) in meteorNodes where !activeIDs.contains(id) {
+            node.removeFromParent()
+            meteorNodes.removeValue(forKey: id)
+        }
+        telegraphLayer.removeAllChildren()
+        fxLayer.removeAllChildren()
+
+        targetShipPosition = CGPoint(x: engine.shipX, y: engine.shipY)
+        isTouching = false
+        lastUpdateTime = nil
+        isGamePaused = false
+
+        syncVisuals(dt: 1.0 / 60.0)
+        notifyStateChange()
+    }
+
     // MARK: - Touch & Drag Input (One-Handed Portrait Play)
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -401,7 +429,10 @@ final class RushScene: SKScene {
         // 2. Ship position, tilt, shield & pixel thruster particles
         shipNode.position = CGPoint(x: engine.shipX, y: engine.shipY)
         shipNode.zRotation = -engine.shipTilt * 0.28
-        shipNode.texture = RushPixelArt.shared.spaceshipTexture(isHyperRush: false)
+        let shipTex = RushPixelArt.shared.spaceshipTexture(isHyperRush: false)
+        if shipNode.texture !== shipTex {
+            shipNode.texture = shipTex
+        }
         shieldRingNode.isHidden = !engine.hasShield
 
         thrusterTimer += dt
