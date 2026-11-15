@@ -9,137 +9,235 @@ final class PingPongPixelArt {
     static let shared = PingPongPixelArt()
 
     private var cache: [String: SKTexture] = [:]
+    private var imageCache: [String: UIImage] = [:]
 
     private init() {}
+
+    func powerUpImage(for type: PingPongPowerUpType) -> UIImage {
+        let key = "powerup_img_\(type.rawValue)"
+        if let cached = imageCache[key] { return cached }
+        let grid = powerUpGrid(for: type)
+        let img = renderPixelGridImage(grid, pixelScale: 3, palette: powerUpPalette(for: type))
+        imageCache[key] = img
+        return img
+    }
 
     func powerUpTexture(for type: PingPongPowerUpType) -> SKTexture {
         let key = "powerup_\(type.rawValue)"
         if let cached = cache[key] { return cached }
 
-        let grid: [String]
-        switch type {
-        case .giantPaddle:
-            // Outward horizontal expand arrows
-            grid = [
-                "............",
-                "....1..1....",
-                "...11..11...",
-                "..11111111..",
-                ".1112222111.",
-                "111222222111",
-                "111222222111",
-                ".1112222111.",
-                "..11111111..",
-                "...11..11...",
-                "....1..1....",
-                "............"
-            ]
-        case .speedBoost:
-            // Classic pixel lightning bolt
-            grid = [
-                "......1111..",
-                ".....11221..",
-                "....11221...",
-                "...11221....",
-                "..112222211.",
-                ".1122222221.",
-                "....112211..",
-                "...11221....",
-                "..11221.....",
-                ".11211......",
-                ".111........",
-                "............"
-            ]
-        case .slowMotion:
-            // Pixel hourglass
-            grid = [
-                ".1111111111.",
-                "..12222221..",
-                "..11222211..",
-                "...112211...",
-                "....1111....",
-                ".....11.....",
-                "....1111....",
-                "...112211...",
-                "..11222211..",
-                "..12222221..",
-                ".1111111111.",
-                "............"
-            ]
-        case .stickyPaddle:
-            // Pixel U-magnet / slime drop
-            grid = [
-                "..111..111..",
-                "..121..121..",
-                "..121..121..",
-                "..111..111..",
-                "..111..111..",
-                "..111..111..",
-                "..11111111..",
-                "...111111...",
-                "....1111....",
-                "............",
-                "............",
-                "............"
-            ]
-        case .doublePoints:
-            // Pixel star / 2X gem
-            grid = [
-                ".....11.....",
-                ".....11.....",
-                "....1221....",
-                ".1112222111.",
-                "..11222211..",
-                "...122221...",
-                "...122221...",
-                "..11211211..",
-                ".111....111.",
-                ".1........1.",
-                "............",
-                "............"
-            ]
-        case .shield:
-            // Pixel knight shield
-            grid = [
-                ".1111111111.",
-                ".1222222221.",
-                ".1211111121.",
-                ".1212222121.",
-                ".1212222121.",
-                ".1211111121.",
-                "..12222221..",
-                "...122221...",
-                "....1221....",
-                ".....11.....",
-                "............",
-                "............"
-            ]
-        case .chaosBall:
-            // Swirling vortex / question cube
-            grid = [
-                "...111111...",
-                "..12222221..",
-                ".1221111221.",
-                ".1211..1121.",
-                ".111...1221.",
-                "......1221..",
-                ".....1221...",
-                ".....111....",
-                "............",
-                ".....111....",
-                ".....111....",
-                "............"
-            ]
-        }
-
-        let primary = skColor(hex: type.uiColorHex)
-        let highlight = SKColor.white
-        let tex = renderPixelGrid(grid, pixelScale: 3, palette: [
-            "1": primary,
-            "2": highlight
-        ])
+        let image = powerUpImage(for: type)
+        let tex = SKTexture(image: image)
+        tex.filteringMode = .nearest
         cache[key] = tex
         return tex
+    }
+
+    private func powerUpPalette(for type: PingPongPowerUpType) -> [Character: SKColor] {
+        let primary = skColor(hex: type.uiColorHex)
+        let dark: SKColor
+        let light: SKColor
+        switch type {
+        case .giantPaddle:
+            dark = skColor(hex: 0x137A4B)
+            light = skColor(hex: 0x8EF7C2)
+        case .speedBoost:
+            dark = skColor(hex: 0xA31628)
+            light = skColor(hex: 0xFF9E80)
+        case .slowMotion:
+            dark = skColor(hex: 0x1B3FA8)
+            light = skColor(hex: 0x99C2FF)
+        case .stickyPaddle:
+            dark = skColor(hex: 0xB87D0E)
+            light = skColor(hex: 0xFFE680)
+        case .doublePoints:
+            dark = skColor(hex: 0xB8256E)
+            light = skColor(hex: 0xFFD1E8)
+        case .shield:
+            dark = skColor(hex: 0x006B8F)
+            light = skColor(hex: 0x8CEFFF)
+        case .chaosBall:
+            dark = skColor(hex: 0x5B21B6)
+            light = skColor(hex: 0xDDD6FE)
+        case .doubleBall:
+            return [
+                "1": SKColor(red: 0.56, green: 0.67, blue: 0.78, alpha: 1.0),
+                "2": SKColor(red: 0.72, green: 0.82, blue: 0.90, alpha: 1.0),
+                "3": SKColor(red: 0.96, green: 0.98, blue: 1.0, alpha: 1.0),
+                "4": SKColor.white
+            ]
+        }
+        return [
+            "1": dark,
+            "2": primary,
+            "3": light,
+            "4": SKColor.white
+        ]
+    }
+
+    private func powerUpGrid(for type: PingPongPowerUpType) -> [String] {
+        switch type {
+        case .giantPaddle:
+            // Crisp 16x16 wide paddle with outward left/right arrows
+            return [
+                "................",
+                "....3......3....",
+                "...34......43...",
+                "..342......243..",
+                ".34221111112243.",
+                "3422233443322243",
+                "3444444444444443",
+                "1222233443322221",
+                ".12221111112221.",
+                "..122......221..",
+                "...12......21...",
+                "....1......1....",
+                "................",
+                "................",
+                "................",
+                "................"
+            ]
+        case .speedBoost:
+            // Crisp 16x16 multi-tone lightning bolt
+            return [
+                ".......333333...",
+                "......3444422...",
+                ".....3444322....",
+                "....3443221.....",
+                "...3443221......",
+                "..34444444433...",
+                ".344444444432...",
+                ".111113443221...",
+                ".....3443221....",
+                "....344321......",
+                "...343221.......",
+                "..34221.........",
+                ".3421...........",
+                ".31.............",
+                "................",
+                "................"
+            ]
+        case .slowMotion:
+            // Crisp 16x16 hourglass with falling sand grains
+            return [
+                "..333333333333..",
+                "..122222222221..",
+                "...1344444431...",
+                "...1324444231...",
+                "....13244231....",
+                ".....134431.....",
+                "......1331......",
+                "......1341......",
+                ".....13..31.....",
+                "....13..4.31....",
+                "...13..44..31...",
+                "...1324444231...",
+                "...1344444431...",
+                "..122222222221..",
+                "..333333333333..",
+                "................"
+            ]
+        case .stickyPaddle:
+            // Crisp 16x16 horseshoe magnet with white pole tips & sparks
+            return [
+                "....4......4....",
+                "..4444....4444..",
+                "..4444....4444..",
+                "..3333....3333..",
+                "..2221....1222..",
+                "..2321....1232..",
+                "..2321....1232..",
+                "..2321....1232..",
+                "..23211..11232..",
+                "..232222222232..",
+                "...2332222332...",
+                "....12222221....",
+                ".....111111.....",
+                "................",
+                "................",
+                "................"
+            ]
+        case .doublePoints:
+            // Proper symmetric 16x16 5-pointed star with bright facets & center shine
+            return [
+                ".......33.......",
+                ".......44.......",
+                "......3443......",
+                "......3443......",
+                ".....334433.....",
+                "3333323443233333",
+                ".23333444433332.",
+                "..123344443321..",
+                "...1233443321...",
+                "....12322321....",
+                "...1232112321...",
+                "...2321..1232...",
+                "..2321....1232..",
+                "..221......122..",
+                "..11........11..",
+                "................"
+            ]
+        case .shield:
+            // Proper 16x16 heraldic heater shield with curved top, metallic rim & central crest
+            return [
+                "......3443......",
+                "..333324423333..",
+                ".34442233224443.",
+                ".34111244211143.",
+                ".32122244222123.",
+                ".32124444442123.",
+                ".32124444442123.",
+                ".32122244222123.",
+                "..321124421123..",
+                "..132124421231..",
+                "...1322442231...",
+                "....13244231....",
+                ".....134431.....",
+                "......1331......",
+                ".......11.......",
+                "................"
+            ]
+        case .chaosBall:
+            // Crisp 16x16 swirling vortex orb with energy sparks
+            return [
+                "......3333......",
+                "....33222233....",
+                "..332111111233..",
+                "..321134431123..",
+                ".32134444443123.",
+                ".31344211244313.",
+                ".31441....14413.",
+                ".31441.44.14413.",
+                ".31344211244313.",
+                ".32134444443123.",
+                "..321134431123..",
+                "..332111111233..",
+                "....33222233....",
+                "......3333......",
+                "................",
+                "................"
+            ]
+        case .doubleBall:
+            // Clean white-themed icon clearly showing two identical default balls
+            return [
+                "................",
+                "...333..........",
+                "..34433.........",
+                ".3443333........",
+                ".3333333........",
+                ".3333322........",
+                "..33322.........",
+                "...322..........",
+                "..........333...",
+                ".........34433..",
+                "........3443333.",
+                "........3333333.",
+                "........3333322.",
+                ".........33322..",
+                "..........322...",
+                "................"
+            ]
+        }
     }
 
     func ballTexture() -> SKTexture {
@@ -164,14 +262,14 @@ final class PingPongPixelArt {
         return tex
     }
 
-    private func renderPixelGrid(_ grid: [String], pixelScale: Int, palette: [Character: SKColor]) -> SKTexture {
+    private func renderPixelGridImage(_ grid: [String], pixelScale: Int, palette: [Character: SKColor]) -> UIImage {
         let rows = grid.count
         let cols = grid.first?.count ?? 1
         let width = cols * pixelScale
         let height = rows * pixelScale
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: width, height: height))
-        let image = renderer.image { ctx in
+        return renderer.image { ctx in
             let cgContext = ctx.cgContext
             cgContext.interpolationQuality = .none
 
@@ -189,7 +287,10 @@ final class PingPongPixelArt {
                 }
             }
         }
+    }
 
+    private func renderPixelGrid(_ grid: [String], pixelScale: Int, palette: [Character: SKColor]) -> SKTexture {
+        let image = renderPixelGridImage(grid, pixelScale: pixelScale, palette: palette)
         let texture = SKTexture(image: image)
         texture.filteringMode = .nearest
         return texture
@@ -249,6 +350,10 @@ final class PingPongScene: SKScene {
     private let ballNode = SKSpriteNode(texture: PingPongPixelArt.shared.ballTexture())
     private var trailNodes: [SKSpriteNode] = []
     private var trailHistory: [CGPoint] = []
+
+    private let extraBallNode = SKSpriteNode(texture: PingPongPixelArt.shared.ballTexture())
+    private var extraTrailNodes: [SKSpriteNode] = []
+    private var extraTrailHistory: [CGPoint] = []
 
     private let shieldBarrierNode = SKShapeNode()
     private var powerUpNodes: [UUID: SKNode] = [:]
@@ -431,6 +536,22 @@ final class PingPongScene: SKScene {
         // Main Pixel Ball
         ballNode.size = CGSize(width: PingPongEngine.ballRadius * 2.1, height: PingPongEngine.ballRadius * 2.1)
         actorLayer.addChild(ballNode)
+
+        // Extra Ball Motion Trail & Node (for Double Ball Power-Up)
+        for i in 0..<6 {
+            let t = SKSpriteNode(texture: PingPongPixelArt.shared.ballTexture())
+            t.size = CGSize(width: PingPongEngine.ballRadius * 2.0, height: PingPongEngine.ballRadius * 2.0)
+            t.alpha = max(0.06, 0.36 - CGFloat(i) * 0.055)
+            t.setScale(1.0 - CGFloat(i) * 0.11)
+            t.zPosition = -1
+            t.isHidden = true
+            actorLayer.addChild(t)
+            extraTrailNodes.append(t)
+        }
+
+        extraBallNode.size = CGSize(width: PingPongEngine.ballRadius * 2.1, height: PingPongEngine.ballRadius * 2.1)
+        extraBallNode.isHidden = true
+        actorLayer.addChild(extraBallNode)
     }
 
     private func updatePlayerPaddleGeometry(width: CGFloat) {
@@ -492,6 +613,9 @@ final class PingPongScene: SKScene {
         powerUpNodes.removeAll()
         trailHistory.removeAll()
         trailNodes.forEach { $0.isHidden = true }
+        extraTrailHistory.removeAll()
+        extraTrailNodes.forEach { $0.isHidden = true }
+        extraBallNode.isHidden = true
         targetPlayerX = nil
         activeTouch = nil
         lastUpdateTime = nil
@@ -509,6 +633,9 @@ final class PingPongScene: SKScene {
         fxLayer.removeAllChildren()
         trailHistory.removeAll()
         trailNodes.forEach { $0.isHidden = true }
+        extraTrailHistory.removeAll()
+        extraTrailNodes.forEach { $0.isHidden = true }
+        extraBallNode.isHidden = true
         targetPlayerX = nil
         activeTouch = nil
         lastUpdateTime = nil
@@ -586,6 +713,39 @@ final class PingPongScene: SKScene {
                 node.colorBlendFactor = ballNode.colorBlendFactor
                 node.isHidden = false
             } else {
+                node.isHidden = true
+            }
+        }
+
+        // Sync Extra Ball (Double Ball Power-Up) — identical visual properties to default ball
+        if engine.hasExtraBall && !engine.isGameOver && engine.serveDelayTimer <= 0 {
+            extraBallNode.isHidden = false
+            extraBallNode.position = engine.extraBallPos
+            extraBallNode.color = ballNode.color
+            extraBallNode.colorBlendFactor = ballNode.colorBlendFactor
+
+            let extraSpeed = hypot(engine.extraBallVel.dx, engine.extraBallVel.dy)
+            extraTrailHistory.append(engine.extraBallPos)
+            if extraTrailHistory.count > 18 {
+                extraTrailHistory.removeFirst()
+            }
+
+            let showExtraTrail = extraSpeed > 280
+            for (i, node) in extraTrailNodes.enumerated() {
+                let historyIdx = extraTrailHistory.count - 1 - (i + 1) * 2
+                if showExtraTrail && historyIdx >= 0 {
+                    node.position = extraTrailHistory[historyIdx]
+                    node.color = ballNode.color
+                    node.colorBlendFactor = ballNode.colorBlendFactor
+                    node.isHidden = false
+                } else {
+                    node.isHidden = true
+                }
+            }
+        } else {
+            extraBallNode.isHidden = true
+            extraTrailHistory.removeAll()
+            for node in extraTrailNodes {
                 node.isHidden = true
             }
         }
@@ -685,7 +845,6 @@ final class PingPongScene: SKScene {
                 AudioManager.shared.play(.nextLevel)
                 HapticsManager.shared.mediumImpact()
                 spawnPixelSparks(at: position, color: PingPongPixelArt.shared.skColor(hex: type.uiColorHex), count: 16)
-                spawnFloatingText(type.shortBadge, at: position, colorHex: type.uiColorHex)
                 gameDelegate?.sceneDidCollectPowerUp(type)
 
             case .playerScored(let pointsAdded, _, let position):

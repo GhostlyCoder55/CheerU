@@ -18,11 +18,62 @@ struct GameIconArt: View {
                 gravityIconArtwork
             case .rush:
                 rushIconArtwork
+            case .chess:
+                chessIconArtwork
             case .wheels:
                 wheelsIconArtwork
             }
         }
         .frame(width: size, height: size)
+    }
+
+    // MARK: - 2B. CHESS Icon: Gold-Framed Espresso Badge with Pixel Board & Royal Duo
+    private var chessIconArtwork: some View {
+        ZStack {
+            // Contained Square Box matching TAP, PING PONG, GRAVITY, and RUSH
+            RoundedRectangle(cornerRadius: size * 0.18, style: .continuous)
+                .fill(Color(hex: 0x1E1510))
+                .overlay(
+                    RoundedRectangle(cornerRadius: size * 0.18, style: .continuous)
+                        .stroke(Color(hex: 0xC9935B).opacity(0.65), lineWidth: 1.5)
+                )
+                .frame(width: size * 0.80, height: size * 0.80)
+
+            // Subtle warm 2x2 chessboard base inside the badge
+            let cell = size * 0.33
+            VStack(spacing: 0) {
+                HStack(spacing: 0) {
+                    Rectangle().fill(Color(hex: 0x4A3121)).frame(width: cell, height: cell)
+                    Rectangle().fill(Color(hex: 0x2B1C14)).frame(width: cell, height: cell)
+                }
+                HStack(spacing: 0) {
+                    Rectangle().fill(Color(hex: 0x2B1C14)).frame(width: cell, height: cell)
+                    Rectangle().fill(Color(hex: 0x4A3121)).frame(width: cell, height: cell)
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: size * 0.11, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: size * 0.11, style: .continuous)
+                    .stroke(Color(hex: 0xC9935B).opacity(0.35), lineWidth: 1)
+            )
+
+            // Brown Knight tucked slightly behind on the left (exact 68:112 aspect ratio)
+            Image(uiImage: ChessSpriteAssets.pieceImage(kind: .knight, color: .dark))
+                .interpolation(.none)
+                .resizable()
+                .scaledToFit()
+                .frame(width: size * 0.34, height: size * 0.56)
+                .offset(x: -size * 0.13, y: size * 0.01)
+
+            // Cream King standing proud front-and-center (exact 68:112 aspect ratio)
+            Image(uiImage: ChessSpriteAssets.pieceImage(kind: .king, color: .light))
+                .interpolation(.none)
+                .resizable()
+                .scaledToFit()
+                .frame(width: size * 0.38, height: size * 0.62)
+                .offset(x: size * 0.10, y: size * 0.02)
+                .shadow(color: Color.black.opacity(0.55), radius: 3, x: -1, y: 2)
+        }
     }
 
     // MARK: - 1. TAP Icon: Canonical CheerUp! Mascot Cube
@@ -129,7 +180,7 @@ struct GameIconArt: View {
         }
     }
 
-    // MARK: - 2. RUSH Icon: Contained Box with Only the Same Pixel Spaceship Boosting
+    // MARK: - 2. RUSH Icon: Contained Box with the New Pixel Spaceship Boosting
     private var rushIconArtwork: some View {
         ZStack {
             // Contained Square Box matching TAP, PING PONG, and GRAVITY
@@ -141,60 +192,13 @@ struct GameIconArt: View {
                 )
                 .frame(width: size * 0.80, height: size * 0.80)
 
-            // Exact same 12-column pixel spaceship from RushScene, boosting with pixel flame plume
-            Canvas { context, canvasSize in
-                let grid: [String] = [
-                    ".....11.....",
-                    "....1221....",
-                    "....1221....",
-                    "...123321...",
-                    "..12233221..",
-                    ".4122332214.",
-                    "441222222144",
-                    "411122221114",
-                    "11.115511.11",
-                    "1...1551...1",
-                    "....5665....",
-                    "....5665....",
-                    ".....55.....",
-                    ".....44....."
-                ]
-
-                let cols = 12
-                let rows = grid.count
-                let px = floor(min(canvasSize.width, canvasSize.height) / CGFloat(max(cols, rows)))
-                let totalW = px * CGFloat(cols)
-                let totalH = px * CGFloat(rows)
-                let originX = (canvasSize.width - totalW) * 0.5
-                let originY = (canvasSize.height - totalH) * 0.5
-
-                func color(for ch: Character) -> Color? {
-                    switch ch {
-                    case "1": return Color(hex: 0x0F172A) // Dark outline
-                    case "2": return Color(hex: 0xF8FAFC) // Crisp starfighter hull
-                    case "3": return Color(hex: 0x22D3EE) // Glowing cyan cockpit visor
-                    case "4": return Color(hex: 0xFF2E93) // Neon magenta wing tips & boost spark
-                    case "5": return Color(hex: 0xF97316) // Thruster flame outer orange
-                    case "6": return Color(hex: 0xFFC83D) // Boosting inner golden core
-                    default:  return nil
-                    }
-                }
-
-                for (r, row) in grid.enumerated() {
-                    for (c, ch) in row.enumerated() {
-                        guard let fill = color(for: ch) else { continue }
-                        let rect = CGRect(
-                            x: originX + CGFloat(c) * px,
-                            y: originY + CGFloat(r) * px,
-                            width: px + 0.35,
-                            height: px + 0.35
-                        )
-                        context.fill(Path(rect), with: .color(fill))
-                    }
-                }
-            }
-            .frame(width: size * 0.58, height: size * 0.62)
-            .shadow(color: Color(hex: 0xFF2E93).opacity(0.45), radius: 5, y: 2)
+            Image("rush_ship_4")
+                .interpolation(.none)
+                .resizable()
+                .scaledToFit()
+                .frame(width: size * 0.64, height: size * 0.66)
+                .offset(y: size * 0.03)
+                .shadow(color: Color(hex: 0xFF2E93).opacity(0.45), radius: 5, y: 2)
         }
     }
 

@@ -46,6 +46,11 @@ final class PingPongEngine {
     private(set) var ballVel: CGVector = .zero
     private(set) var baseSpeed: CGFloat = 340.0
 
+    // Double ball (second ball in play) state
+    private(set) var hasExtraBall: Bool = false
+    private(set) var extraBallPos: CGPoint = CGPoint(x: 180.0, y: 310.0)
+    private(set) var extraBallVel: CGVector = .zero
+
     // Sticky paddle state
     private(set) var isBallStuckToPlayer: Bool = false
     private var stuckOffsetX: CGFloat = 0.0
@@ -123,6 +128,8 @@ final class PingPongEngine {
         calloutCooldown = 0
 
         isBallStuckToPlayer = false
+        hasExtraBall = false
+        extraBallVel = .zero
         prepareServe(towardPlayer: false, initialDelay: 0.55)
     }
 
@@ -138,11 +145,15 @@ final class PingPongEngine {
             cpuScore = max(0, mode.targetScore - 1)
         }
         isBallStuckToPlayer = false
+        hasExtraBall = false
+        extraBallVel = .zero
         prepareServe(towardPlayer: false, initialDelay: 0.75)
     }
 
     private func prepareServe(towardPlayer: Bool, initialDelay: Double = 0.65) {
         isBallStuckToPlayer = false
+        hasExtraBall = false
+        extraBallVel = .zero
         currentRally = 0
         ballPos = CGPoint(x: Self.courtWidth / 2, y: Self.netY)
         ballVel = .zero
@@ -163,6 +174,30 @@ final class PingPongEngine {
         ballVel = CGVector(
             dx: sin(angle) * baseSpeed,
             dy: cos(angle) * baseSpeed * dirY
+        )
+    }
+
+    private func freshServeVelocity(towardPlayer: Bool) -> CGVector {
+        let tierBoost = CGFloat(difficultyTier.rawValue - 1) * 26.0
+        let serveSpeed = min(560.0, 345.0 + tierBoost) * currentSpeedMultiplier
+        let angle = CGFloat.random(in: -0.38...0.38)
+        let dirY: CGFloat = towardPlayer ? -1.0 : 1.0
+        return CGVector(
+            dx: sin(angle) * serveSpeed,
+            dy: cos(angle) * serveSpeed * dirY
+        )
+    }
+
+    func spawnExtraBall() {
+        hasExtraBall = true
+        extraBallPos = ballPos
+        let speed = max(baseSpeed, hypot(ballVel.dx, ballVel.dy)) * currentSpeedMultiplier
+        let primaryAngle = atan2(ballVel.dx, max(80.0, abs(ballVel.dy)))
+        let offsetAngle: CGFloat = primaryAngle >= 0 ? -0.34 : 0.34
+        let twinAngle = max(-.pi * 0.36, min(.pi * 0.36, primaryAngle + offsetAngle))
+        extraBallVel = CGVector(
+            dx: sin(twinAngle) * speed,
+            dy: abs(cos(twinAngle) * speed)
         )
     }
 
@@ -243,6 +278,14 @@ final class PingPongEngine {
             if stuckTimer <= 0 {
                 events.append(contentsOf: releaseStuckBall())
             }
+            if hasExtraBall {
+                let subSteps = 3
+                let subDt = CGFloat(dt) / CGFloat(subSteps)
+                for _ in 0..<subSteps {
+                    guard !isGameOver && hasExtraBall else { break }
+                    stepExtraBallPhysics(dt: subDt, events: &events)
+                }
+            }
             updateCPU(dt: dt)
             return events
         }
@@ -254,6 +297,9 @@ final class PingPongEngine {
         for _ in 0..<subSteps {
             guard !isGameOver && serveDelayTimer <= 0 && !isBallStuckToPlayer else { break }
             stepBallPhysics(dt: subDt, events: &events)
+            if !isGameOver && serveDelayTimer <= 0 && hasExtraBall {
+                stepExtraBallPhysics(dt: subDt, events: &events)
+            }
         }
 
         // 7. Update CPU Opponent
@@ -323,18 +369,44 @@ final class PingPongEngine {
             ballVel.dy = abs(ballVel.dy)
             removePowerUp(.shield)
             events.append(.shieldSaved(position: nextPos))
-            triggerCallout(LanguageManager.shared.tr("NICE SAVE!", "BEL ARRÊT !", "¡GRAN SALVADA!"), hex: 0x00D2FF, events: &events, force: true)
             ballPos = nextPos
             return
         }
 
         // Check Scoring / Out of Bounds
         if nextPos.y < -15.0 {
-            // Player missed the ball!
+            if hasExtraBall {
+                // Remove only this missed ball; the other ball continues moving normally
+                ballPos = extraBallPos
+                ballVel = extraBallVel
+                hasExtraBall = false
+                extraBallVel = .zero
+                return
+            }
+            // All active balls have been missed!
             ballPos = nextPos
             handlePlayerMissed(events: &events)
             return
         } else if nextPos.y > Self.courtHeight + 15.0 {
+            if hasExtraBall {
+                // Player scores with primary ball while both balls remain active!
+                let basePts = mode == .endless ? 3 : 1
+                let pts = isDoublePoints ? basePts * 2 : basePts
+                playerScore += pts
+                events.append(.playerScored(pointsAdded: pts, newScore: playerScore, position: nextPos))
+                updateDifficultyProgression(events: &events)
+
+                if mode == .classic && playerScore >= mode.targetScore {
+                    ballPos = nextPos
+                    finishGame(playerWon: true, events: &events)
+                    return
+                }
+
+                // Re-serve this ball from center net so both balls stay active until missed by player
+                ballPos = CGPoint(x: Self.courtWidth / 2, y: Self.netY)
+                ballVel = freshServeVelocity(towardPlayer: false)
+                return
+            }
             // CPU missed the ball! Player scores!
             ballPos = nextPos
             handleCPUMissed(events: &events)
@@ -342,6 +414,95 @@ final class PingPongEngine {
         }
 
         ballPos = nextPos
+    }
+
+    private func stepExtraBallPhysics(dt: CGFloat, events: inout [PingPongEvent]) {
+        guard hasExtraBall else { return }
+        let prevPos = extraBallPos
+        var nextPos = CGPoint(
+            x: extraBallPos.x + extraBallVel.dx * dt,
+            y: extraBallPos.y + extraBallVel.dy * dt
+        )
+
+        let minBallX = Self.wallInset + Self.ballRadius
+        let maxBallX = Self.courtWidth - Self.wallInset - Self.ballRadius
+
+        if nextPos.x < minBallX {
+            nextPos.x = minBallX + (minBallX - nextPos.x)
+            extraBallVel.dx = abs(extraBallVel.dx)
+            applyChaosDeflection(to: &extraBallVel)
+            events.append(.wallBounce(position: nextPos))
+        } else if nextPos.x > maxBallX {
+            nextPos.x = maxBallX - (nextPos.x - maxBallX)
+            extraBallVel.dx = -abs(extraBallVel.dx)
+            applyChaosDeflection(to: &extraBallVel)
+            events.append(.wallBounce(position: nextPos))
+        }
+
+        checkPowerUpCollection(at: nextPos, events: &events)
+
+        // Player Paddle Collision
+        let playerHitY = Self.playerY + Self.paddleHeight * 0.5 + Self.ballRadius
+        if extraBallVel.dy < 0 && prevPos.y >= playerHitY - 6.0 && nextPos.y <= playerHitY {
+            let halfW = currentPlayerPaddleWidth * 0.5 + Self.ballRadius + 4.0
+            if abs(nextPos.x - playerX) <= halfW {
+                nextPos.y = playerHitY
+                handleExtraBallPlayerContact(at: &nextPos, events: &events)
+                extraBallPos = nextPos
+                return
+            }
+        }
+
+        // CPU Paddle Collision
+        let cpuHitY = Self.cpuY - Self.paddleHeight * 0.5 - Self.ballRadius
+        if extraBallVel.dy > 0 && prevPos.y <= cpuHitY + 6.0 && nextPos.y >= cpuHitY {
+            let halfW = Self.cpuPaddleWidth * 0.5 + Self.ballRadius + 3.0
+            if abs(nextPos.x - cpuX) <= halfW {
+                nextPos.y = cpuHitY
+                handleExtraBallCPUContact(at: &nextPos, events: &events)
+                extraBallPos = nextPos
+                return
+            }
+        }
+
+        // Shield Bottom Barrier Save
+        let shieldLineY: CGFloat = 34.0
+        if extraBallVel.dy < 0 && hasShieldActive && nextPos.y <= shieldLineY {
+            nextPos.y = shieldLineY + 2.0
+            extraBallVel.dy = abs(extraBallVel.dy)
+            removePowerUp(.shield)
+            events.append(.shieldSaved(position: nextPos))
+            extraBallPos = nextPos
+            return
+        }
+
+        // Extra Ball Out of Bounds
+        if nextPos.y < -15.0 {
+            // Remove only the missed extra ball; primary ball continues moving normally
+            hasExtraBall = false
+            extraBallVel = .zero
+            return
+        } else if nextPos.y > Self.courtHeight + 15.0 {
+            // Extra ball scored past CPU while both balls remain active!
+            let basePts = mode == .endless ? 3 : 1
+            let pts = isDoublePoints ? basePts * 2 : basePts
+            playerScore += pts
+            events.append(.playerScored(pointsAdded: pts, newScore: playerScore, position: nextPos))
+            updateDifficultyProgression(events: &events)
+
+            if mode == .classic && playerScore >= mode.targetScore {
+                extraBallPos = nextPos
+                finishGame(playerWon: true, events: &events)
+                return
+            }
+
+            // Re-serve extra ball from center net so both balls stay active until missed by player
+            extraBallPos = CGPoint(x: Self.courtWidth / 2, y: Self.netY)
+            extraBallVel = freshServeVelocity(towardPlayer: false)
+            return
+        }
+
+        extraBallPos = nextPos
     }
 
     // MARK: - Paddle Contact Physics
@@ -400,17 +561,73 @@ final class PingPongEngine {
 
         // Schedule new AI reaction & imperfect aim error for this incoming shot
         scheduleAIReactionForIncomingShot()
+    }
 
-        // Occasional playful arcade callouts
-        if abs(pos.x - playerX) >= halfW * 0.86 {
-            triggerCallout(LanguageManager.shared.tr("NICE SAVE!", "BEL ARRÊT !", "¡GRAN SALVADA!"), hex: 0x2EDB8A, events: &events)
-        } else if effectiveSpeed > 640 {
-            triggerCallout(LanguageManager.shared.tr("TOO FAST!", "TROP VITE !", "¡DEMASIADO RÁPIDO!"), hex: 0xFF4B5C, events: &events)
-        } else if currentRally == 8 {
-            triggerCallout(LanguageManager.shared.tr("GETTING HOT!", "ÇA CHAUFFE !", "¡EN RACHA!"), hex: 0xFFC83D, events: &events)
-        } else if currentRally == 16 {
-            triggerCallout(LanguageManager.shared.tr("UNSTOPPABLE!", "INARRÊTABLE !", "¡IMPARABLE!"), hex: 0xFF7AB6, events: &events)
+    private func handleExtraBallPlayerContact(at pos: inout CGPoint, events: inout [PingPongEvent]) {
+        currentRally += 1
+        longestRally = max(longestRally, currentRally)
+
+        if mode == .endless && currentRally % 2 == 0 {
+            let pts = isDoublePoints ? 2 : 1
+            playerScore += pts
+            events.append(.playerScored(pointsAdded: pts, newScore: playerScore, position: pos))
+            updateDifficultyProgression(events: &events)
         }
+
+        let halfW = currentPlayerPaddleWidth * 0.5
+        let relativeHit = max(-1.0, min(1.0, (pos.x - playerX) / halfW))
+        var bounceAngle = relativeHit * (.pi * 0.37)
+        if isChaosBall {
+            bounceAngle += CGFloat.random(in: -0.28...0.28)
+            bounceAngle = max(-.pi * 0.42, min(.pi * 0.42, bounceAngle))
+        }
+
+        baseSpeed = min(780.0, baseSpeed + 10.0)
+        let isSmash = abs(relativeHit) > 0.72 || abs(playerVX) > 420 || isPowerUpActive(.speedBoost)
+        let smashMultiplier: CGFloat = isSmash ? 1.10 : 1.0
+        let effectiveSpeed = min(840.0, baseSpeed * currentSpeedMultiplier * smashMultiplier)
+
+        extraBallVel = CGVector(
+            dx: sin(bounceAngle) * effectiveSpeed + playerVX * 0.12,
+            dy: abs(cos(bounceAngle) * effectiveSpeed)
+        )
+
+        let minVerticalSpeed = effectiveSpeed * 0.42
+        if extraBallVel.dy < minVerticalSpeed {
+            extraBallVel.dy = minVerticalSpeed
+        }
+
+        events.append(.paddleHit(isPlayer: true, position: pos, speed: effectiveSpeed, isSmash: isSmash))
+        scheduleAIReactionForIncomingShot()
+    }
+
+    private func handleExtraBallCPUContact(at pos: inout CGPoint, events: inout [PingPongEvent]) {
+        currentRally += 1
+        longestRally = max(longestRally, currentRally)
+
+        let halfW = Self.cpuPaddleWidth * 0.5
+        let relativeHit = max(-1.0, min(1.0, (pos.x - cpuX) / halfW))
+        var bounceAngle = relativeHit * (.pi * 0.34)
+        bounceAngle += CGFloat.random(in: -0.15...0.15)
+        if isChaosBall {
+            bounceAngle += CGFloat.random(in: -0.26...0.26)
+        }
+        bounceAngle = max(-.pi * 0.40, min(.pi * 0.40, bounceAngle))
+
+        baseSpeed = min(780.0, baseSpeed + 8.0)
+        let effectiveSpeed = min(820.0, baseSpeed * currentSpeedMultiplier)
+
+        extraBallVel = CGVector(
+            dx: sin(bounceAngle) * effectiveSpeed,
+            dy: -abs(cos(bounceAngle) * effectiveSpeed)
+        )
+
+        let minVerticalSpeed = effectiveSpeed * 0.45
+        if abs(extraBallVel.dy) < minVerticalSpeed {
+            extraBallVel.dy = -minVerticalSpeed
+        }
+
+        events.append(.paddleHit(isPlayer: false, position: pos, speed: effectiveSpeed, isSmash: false))
     }
 
     private func handleCPUPaddleContact(at pos: inout CGPoint, events: inout [PingPongEvent]) {
@@ -445,14 +662,18 @@ final class PingPongEngine {
     }
 
     private func applyChaosDeflectionIfNeeded() {
+        applyChaosDeflection(to: &ballVel)
+    }
+
+    private func applyChaosDeflection(to vel: inout CGVector) {
         guard isChaosBall else { return }
-        let speed = hypot(ballVel.dx, ballVel.dy)
+        let speed = hypot(vel.dx, vel.dy)
         guard speed > 10 else { return }
-        let currentAngle = atan2(ballVel.dx, abs(ballVel.dy))
+        let currentAngle = atan2(vel.dx, abs(vel.dy))
         let tweakedAngle = max(-.pi * 0.40, min(.pi * 0.40, currentAngle + CGFloat.random(in: -0.32...0.32)))
-        let signY: CGFloat = ballVel.dy >= 0 ? 1.0 : -1.0
-        ballVel.dx = sin(tweakedAngle) * speed
-        ballVel.dy = cos(tweakedAngle) * speed * signY
+        let signY: CGFloat = vel.dy >= 0 ? 1.0 : -1.0
+        vel.dx = sin(tweakedAngle) * speed
+        vel.dy = cos(tweakedAngle) * speed * signY
     }
 
     // MARK: - Scoring & Game Over Rules
@@ -494,6 +715,8 @@ final class PingPongEngine {
         isGameOver = true
         self.playerWon = playerWon
         ballVel = .zero
+        hasExtraBall = false
+        extraBallVel = .zero
 
         let previousBest = ScoreManager.shared.highScore(for: .pingPong)
         let isNewBest = playerScore > previousBest && playerScore > 0
@@ -544,15 +767,32 @@ final class PingPongEngine {
         let minX = Self.wallInset + halfCPU
         let maxX = Self.courtWidth - Self.wallInset - halfCPU
 
-        if ballVel.dy > 0 {
+        // Pick whichever incoming ball (heading toward CPU) will reach CPU Y soonest
+        var trackedPos = ballPos
+        var trackedVel = ballVel
+        if hasExtraBall && extraBallVel.dy > 0 {
+            if ballVel.dy <= 0 {
+                trackedPos = extraBallPos
+                trackedVel = extraBallVel
+            } else {
+                let primaryETA = max(1.0, Self.cpuY - ballPos.y) / max(80.0, ballVel.dy)
+                let extraETA = max(1.0, Self.cpuY - extraBallPos.y) / max(80.0, extraBallVel.dy)
+                if extraETA < primaryETA {
+                    trackedPos = extraBallPos
+                    trackedVel = extraBallVel
+                }
+            }
+        }
+
+        if trackedVel.dy > 0 {
             // Ball is heading toward CPU
             if aiReactionTimer > 0 {
                 aiReactionTimer -= dt
             } else {
                 // Predict interception X with one wall reflection approximation
-                let distY = max(1.0, Self.cpuY - ballPos.y)
-                let timeToReach = distY / max(80.0, ballVel.dy)
-                var predictedX = ballPos.x + ballVel.dx * timeToReach
+                let distY = max(1.0, Self.cpuY - trackedPos.y)
+                let timeToReach = distY / max(80.0, trackedVel.dy)
+                var predictedX = trackedPos.x + trackedVel.dx * timeToReach
 
                 // Reflect inside court walls
                 let playableMin = Self.wallInset + Self.ballRadius
@@ -573,7 +813,7 @@ final class PingPongEngine {
             }
         } else {
             // Drift back toward center-ish when ball moves toward player
-            aiTargetX = Self.courtWidth * 0.5 + (ballPos.x - Self.courtWidth * 0.5) * 0.28
+            aiTargetX = Self.courtWidth * 0.5 + (trackedPos.x - Self.courtWidth * 0.5) * 0.28
         }
 
         let clampedTarget = max(minX, min(maxX, aiTargetX))
@@ -619,6 +859,8 @@ final class PingPongEngine {
             if spawnedPowerUps.contains(where: { $0.type == candidate }) { return false }
             // Avoid spawning Shield if already shielded
             if candidate == .shield && hasShieldActive { return false }
+            // Avoid spawning Double Ball if extra ball is already active
+            if candidate == .doubleBall && (hasExtraBall || isPowerUpActive(.doubleBall)) { return false }
             return true
         }
 
@@ -648,6 +890,12 @@ final class PingPongEngine {
     }
 
     private func activatePowerUp(_ type: PingPongPowerUpType, at position: CGPoint, events: inout [PingPongEvent]) {
+        if type == .doubleBall {
+            spawnExtraBall()
+            events.append(.powerUpCollected(type, position: position))
+            return
+        }
+
         // Balance rule: Do not activate multiple disruptive physics effects simultaneously
         if type.isPhysicsDisruptive {
             activePowerUps.removeAll(where: { $0.type.isPhysicsDisruptive && $0.type != type })
@@ -666,12 +914,6 @@ final class PingPongEngine {
         }
 
         events.append(.powerUpCollected(type, position: position))
-
-        if type == .chaosBall {
-            triggerCallout(LanguageManager.shared.tr("CHAOS MODE!", "MODE CHAOS !", "¡MODO CAOS!"), hex: type.uiColorHex, events: &events, force: true)
-        } else {
-            triggerCallout(type.name + "!", hex: type.uiColorHex, events: &events)
-        }
     }
 
     // MARK: - Callouts

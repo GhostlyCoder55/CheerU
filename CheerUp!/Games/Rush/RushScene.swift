@@ -2,10 +2,10 @@ import SpriteKit
 import UIKit
 
 // MARK: - RUSH Pixel Art Texture Generator
-// Crisp nearest-neighbor 2D indie pixel art:
-// - Tiny starfighter spaceship
-// - Uniform pixel meteor obstacles (all looking identical)
-// - Little glowing power-up orbs (Shield & Slow Speed)
+// Crisp nearest-neighbor 2D pixel art:
+// - 8-frame animated pixel starfighter spaceship (rush_ship_0 .. rush_ship_7)
+// - 8-frame pixel asteroid obstacles (rush_asteroid_0 .. rush_asteroid_7)
+// - Little glowing power-up orbs (Shield, Slow Speed & Rare Flaming Orange Orb)
 
 final class RushPixelArt {
     static let shared = RushPixelArt()
@@ -14,75 +14,65 @@ final class RushPixelArt {
 
     private init() {}
 
-    func spaceshipTexture(isHyperRush: Bool) -> SKTexture {
-        let key = "rush_ship_\(isHyperRush)"
+    func spaceshipTexture(frame: Int = 4) -> SKTexture {
+        let clamped = ((frame % 8) + 8) % 8
+        let key = "rush_ship_\(clamped)"
         if let cached = cache[key] { return cached }
-
-        // 12x12 crisp pixel starfighter
-        let grid = [
-            ".....11.....",
-            "....1221....",
-            "....1221....",
-            "...123321...",
-            "..12233221..",
-            ".4122332214.",
-            "441222222144",
-            "411122221114",
-            "11.115511.11",
-            "1...1551...1",
-            ".....55.....",
-            "............"
-        ]
-
-        let hullHex: UInt = isHyperRush ? 0xFEF08A : 0xF8FAFC
-        let wingTipHex: UInt = isHyperRush ? 0xFFC83D : 0xFF2E93
-
-        let tex = renderPixelGrid(grid, pixelScale: 3, palette: [
-            "1": skColor(hex: 0x0F172A),   // Dark outline
-            "2": skColor(hex: hullHex),    // Crisp starfighter hull
-            "3": skColor(hex: 0x22D3EE),   // Glowing cyan cockpit visor
-            "4": skColor(hex: wingTipHex), // Neon magenta wing tips
-            "5": skColor(hex: 0xF97316)    // Thruster nozzle glow
-        ])
+        let tex = SKTexture(imageNamed: key)
+        tex.filteringMode = .nearest
         cache[key] = tex
         return tex
     }
 
-    /// Single uniform pixel-art meteor texture so every obstacle looks identical
-    func meteorTexture() -> SKTexture {
-        let key = "rush_uniform_meteor"
+    func flameSpaceshipTexture(frame: Int) -> SKTexture {
+        let clamped = ((frame % 12) + 12) % 12
+        let key = "rush_flame_ship_\(clamped)"
         if let cached = cache[key] { return cached }
-
-        // 11x11 classic craggy pixel meteor with warm rocky shading & glowing ember core crack
-        let grid = [
-            "...11111...",
-            "..1222441..",
-            ".122332441.",
-            "12235322221",
-            "12233223321",
-            "13222235321",
-            "13322233231",
-            "13332222331",
-            ".133333331.",
-            "..1333331..",
-            "...11111..."
-        ]
-
-        let tex = renderPixelGrid(grid, pixelScale: 3, palette: [
-            "1": skColor(hex: 0x090D16), // Crisp dark pixel outline
-            "2": skColor(hex: 0x475569), // Mid meteor stone
-            "3": skColor(hex: 0x1E293B), // Deep crater shadow
-            "4": skColor(hex: 0x94A3B8), // Top-right rim highlight
-            "5": skColor(hex: 0xFF2E93)  // Subtle glowing core ember
-        ])
+        let tex = SKTexture(imageNamed: key)
+        tex.filteringMode = .nearest
         cache[key] = tex
         return tex
     }
 
-    /// Little glowing pixel power-up orbs (Shield = Cyan Orb, Slow = Violet Orb)
+    func meteorTexture(variant: Int = 0) -> SKTexture {
+        let clamped = ((variant % 8) + 8) % 8
+        let key = "rush_asteroid_\(clamped)"
+        if let cached = cache[key] { return cached }
+        let tex = SKTexture(imageNamed: key)
+        tex.filteringMode = .nearest
+        cache[key] = tex
+        return tex
+    }
+
+    /// Little glowing pixel power-up orbs (Shield = Cyan, Slow = Violet, FlameBoost = Flaming Orange)
     func powerUpOrbTexture(for type: RushPowerUpType) -> SKTexture {
         let key = "rush_orb_\(type.rawValue)"
         if let cached = cache[key] { return cached }
+
+        if type == .flameBoost {
+            // 10x10 flaming orange pixel orb with lick of fire crown
+            let flameGrid = [
+                "....45....",
+                "...4534...",
+                "..142324..",
+                ".12233321.",
+                "1223333221",
+                "1233333221",
+                "1223322221",
+                ".12222221.",
+                "..112211..",
+                "....11...."
+            ]
+            let tex = renderPixelGrid(flameGrid, pixelScale: 3, palette: [
+                "1": skColor(hex: 0xDC2626), // Deep Crimson Flame Edge
+                "2": skColor(hex: 0xFF5500), // Blazing Orange Core
+                "3": skColor(hex: 0xFEF08A), // White-Hot Solar Center
+                "4": skColor(hex: 0xF97316), // Outer Ember Flicker
+                "5": skColor(hex: 0xFACC15)  // Golden Flame Tip
+            ])
+            cache[key] = tex
+            return tex
+        }
 
         // 8x8 cute little glowing pixel orb
         let grid = [
@@ -110,6 +100,8 @@ final class RushPixelArt {
                 "2": skColor(hex: 0xA855F7),
                 "3": skColor(hex: 0xF3E8FF)
             ]
+        case .flameBoost:
+            palette = [:]
         }
 
         let tex = renderPixelGrid(grid, pixelScale: 3, palette: palette)
@@ -186,6 +178,10 @@ final class RushScene: SKScene {
     private let shipNode = SKSpriteNode()
     private let shieldRingNode = SKShapeNode(circleOfRadius: 24)
     private var thrusterTimer: Double = 0.0
+    private var shipAnimTimer: Double = 0.0
+    private var shipFrameIndex: Int = 0
+    private var flameFrameIndex: Int = 0
+    private var flameTrailTimer: Double = 0.0
 
     // Dynamic Node Maps
     private var meteorNodes: [UUID: SKSpriteNode] = [:]
@@ -255,9 +251,11 @@ final class RushScene: SKScene {
         worldNode.addChild(shipLayer)
         worldNode.addChild(fxLayer)
 
-        let tex = RushPixelArt.shared.spaceshipTexture(isHyperRush: false)
+        let tex = RushPixelArt.shared.spaceshipTexture(frame: 4)
         shipNode.texture = tex
-        shipNode.size = tex.size()
+        shipNode.size = CGSize(width: 44, height: 74)
+        // Anchor directly on the solid rocket hull center so the exhaust flame hangs below (shipX, shipY)
+        shipNode.anchorPoint = CGPoint(x: 0.5, y: 0.74)
         shipLayer.addChild(shipNode)
 
         shieldRingNode.strokeColor = RushPixelArt.shared.skColor(hex: 0x22D3EE, alpha: 0.88)
@@ -414,36 +412,83 @@ final class RushScene: SKScene {
     // MARK: - Visual Synchronization
 
     private func syncVisuals(dt: Double) {
-        // 1. Scroll parallax pixel starfield
-        let starMult: CGFloat = engine.isSlowTimeActive ? 0.45 : 1.0
+        let isFlameBoost = engine.isFlameBoostActive
+
+        // 1. Scroll parallax pixel starfield (warp streaks during Flaming Orange Orb!)
+        let starMult: CGFloat = isFlameBoost ? 3.2 : (engine.isSlowTimeActive ? 0.45 : 1.0)
         let h = max(600.0, size.height)
         let w = max(320.0, size.width)
         for item in stars {
             item.node.position.y -= item.speed * starMult * CGFloat(dt)
-            if item.node.position.y < -6 {
-                item.node.position.y = h + 6
+            item.node.yScale = isFlameBoost ? 4.2 : 1.0
+            if item.node.position.y < -12 {
+                item.node.position.y = h + 12
                 item.node.position.x = CGFloat.random(in: 8...(w - 8))
             }
         }
 
-        // 2. Ship position, tilt, shield & pixel thruster particles
+        // 2. Ship position, tilt, animated thruster / flame-boost sprites & shield
         shipNode.position = CGPoint(x: engine.shipX, y: engine.shipY)
         shipNode.zRotation = -engine.shipTilt * 0.28
-        let shipTex = RushPixelArt.shared.spaceshipTexture(isHyperRush: false)
-        if shipNode.texture !== shipTex {
-            shipNode.texture = shipTex
-        }
         shieldRingNode.isHidden = !engine.hasShield
 
+        if isFlameBoost {
+            // 12-frame blazing flame-wrapped spaceship sprite animation (no circular border)
+            shipAnimTimer += dt
+            if shipAnimTimer >= 0.045 {
+                shipAnimTimer = 0
+                flameFrameIndex = (flameFrameIndex + 1) % 12
+            }
+            let flameTex = RushPixelArt.shared.flameSpaceshipTexture(frame: flameFrameIndex)
+            if shipNode.texture !== flameTex {
+                shipNode.texture = flameTex
+            }
+            let boostSize = CGSize(width: 52, height: 89)
+            if shipNode.size != boostSize {
+                shipNode.size = boostSize
+                shipNode.anchorPoint = CGPoint(x: 0.5, y: 0.738)
+            }
+            shipNode.colorBlendFactor = 0.0
+
+            // Subtle intangibility phasing shimmer + blazing afterimage trail
+            let phase = CGFloat(sin(engine.elapsedTime * 24.0))
+            shipNode.alpha = 0.76 + 0.24 * abs(phase)
+
+            flameTrailTimer += dt
+            if flameTrailTimer >= 0.055 {
+                flameTrailTimer = 0
+                spawnFlameBoostAfterimage()
+            }
+        } else {
+            shipAnimTimer += dt
+            if shipAnimTimer >= 0.065 {
+                shipAnimTimer = 0
+                shipFrameIndex = (shipFrameIndex + 1) % 8
+            }
+            let shipTex = RushPixelArt.shared.spaceshipTexture(frame: shipFrameIndex)
+            if shipNode.texture !== shipTex {
+                shipNode.texture = shipTex
+            }
+            let normalSize = CGSize(width: 44, height: 74)
+            if shipNode.size != normalSize {
+                shipNode.size = normalSize
+                shipNode.anchorPoint = CGPoint(x: 0.5, y: 0.74)
+            }
+            shipNode.colorBlendFactor = 0.0
+            if shipNode.action(forKey: "shieldBlink") == nil {
+                shipNode.alpha = 1.0
+            }
+        }
+
         thrusterTimer += dt
-        if thrusterTimer >= 0.045 {
+        let thrusterInterval = isFlameBoost ? 0.022 : 0.045
+        if thrusterTimer >= thrusterInterval {
             thrusterTimer = 0
             spawnThrusterPixel()
         }
 
-        // 3. Sync Uniform Meteors (50% larger: 50x50pt)
-        let sharedMeteorTex = RushPixelArt.shared.meteorTexture()
-        let meteorSize = CGSize(width: 50, height: 50)
+        // 3. Sync Pixel Asteroids (56x56pt so the solid rock core matches collisionRadius = 19.5pt)
+        let meteorSize = CGSize(width: 56, height: 56)
         var activeMeteorIDs = Set<UUID>()
         for meteor in engine.asteroids {
             activeMeteorIDs.insert(meteor.id)
@@ -454,7 +499,8 @@ final class RushScene: SKScene {
                     node.size = meteorSize
                 }
             } else {
-                let created = SKSpriteNode(texture: sharedMeteorTex, size: meteorSize)
+                let tex = RushPixelArt.shared.meteorTexture(variant: meteor.variantIndex)
+                let created = SKSpriteNode(texture: tex, size: meteorSize)
                 meteorLayer.addChild(created)
                 meteorNodes[meteor.id] = created
                 node = created
@@ -479,16 +525,18 @@ final class RushScene: SKScene {
                 let tex = RushPixelArt.shared.powerUpOrbTexture(for: col.type)
                 let created = SKSpriteNode(texture: tex, size: tex.size())
 
-                // Soft pulsing orb aura
-                let aura = SKShapeNode(circleOfRadius: 15)
-                aura.strokeColor = RushPixelArt.shared.skColor(hex: col.type.colorHex, alpha: 0.65)
-                aura.fillColor = RushPixelArt.shared.skColor(hex: col.type.colorHex, alpha: 0.16)
-                aura.lineWidth = 1.5
+                // Soft pulsing orb aura (extra fiery double-ring for Flaming Orange Orb)
+                let auraRadius: CGFloat = col.type == .flameBoost ? 18 : 15
+                let aura = SKShapeNode(circleOfRadius: auraRadius)
+                aura.strokeColor = RushPixelArt.shared.skColor(hex: col.type.colorHex, alpha: 0.82)
+                aura.fillColor = RushPixelArt.shared.skColor(hex: col.type.colorHex, alpha: col.type == .flameBoost ? 0.28 : 0.16)
+                aura.lineWidth = col.type == .flameBoost ? 2.2 : 1.5
                 created.addChild(aura)
 
+                let scaleDuration = col.type == .flameBoost ? 0.32 : 0.55
                 aura.run(.repeatForever(.sequence([
-                    .scale(to: 1.18, duration: 0.55),
-                    .scale(to: 0.92, duration: 0.55)
+                    .scale(to: 1.24, duration: scaleDuration),
+                    .scale(to: 0.90, duration: scaleDuration)
                 ])))
 
                 collectibleLayer.addChild(created)
@@ -525,9 +573,16 @@ final class RushScene: SKScene {
                 notifyStateChange()
 
             case .powerUpCollected(let type, let x, let y):
-                HapticsManager.shared.mediumImpact()
+                if type == .flameBoost {
+                    HapticsManager.shared.heavyImpact()
+                    triggerScreenShake(intensity: 6.5)
+                    spawnPixelBurst(at: CGPoint(x: x, y: y), colorHex: 0xFEF08A, count: 18)
+                    spawnPixelBurst(at: CGPoint(x: x, y: y), colorHex: 0xFF5500, count: 16)
+                } else {
+                    HapticsManager.shared.mediumImpact()
+                }
                 AudioManager.shared.play(.nextLevel)
-                spawnPixelBurst(at: CGPoint(x: x, y: y), colorHex: type.colorHex, count: 14)
+                spawnPixelBurst(at: CGPoint(x: x, y: y), colorHex: type.colorHex, count: 16)
                 spawnFloatingText(
                     "\(type.badgeTitle)",
                     at: CGPoint(x: x, y: y + 18),
@@ -797,15 +852,36 @@ final class RushScene: SKScene {
         ]))
     }
 
+    private func spawnFlameBoostAfterimage() {
+        guard let tex = shipNode.texture else { return }
+        let ghost = SKSpriteNode(texture: tex, size: shipNode.size)
+        ghost.anchorPoint = shipNode.anchorPoint
+        ghost.position = shipNode.position
+        ghost.zRotation = shipNode.zRotation
+        ghost.color = RushPixelArt.shared.skColor(hex: 0xFF5500)
+        ghost.colorBlendFactor = 0.78
+        ghost.alpha = 0.52
+        fxLayer.addChild(ghost)
+
+        ghost.run(.sequence([
+            .group([
+                .moveBy(x: 0, y: -38, duration: 0.22),
+                .fadeOut(withDuration: 0.22),
+                .scale(to: 0.82, duration: 0.22)
+            ]),
+            .removeFromParent()
+        ]))
+    }
+
     private func spawnThrusterPixel() {
-        let colorHex: UInt = engine.isSlowTimeActive ? 0x22D3EE : 0xFF2E93
+        let colorHex: UInt = engine.isFlameBoostActive ? 0xFF5500 : (engine.isSlowTimeActive ? 0x22D3EE : 0xFF2E93)
         let p = SKSpriteNode(
-            color: RushPixelArt.shared.skColor(hex: colorHex, alpha: 0.85),
-            size: CGSize(width: 4, height: 4)
+            color: RushPixelArt.shared.skColor(hex: colorHex, alpha: 0.88),
+            size: CGSize(width: engine.isFlameBoostActive ? 5 : 4, height: engine.isFlameBoostActive ? 6 : 4)
         )
         p.position = CGPoint(
-            x: engine.shipX + CGFloat.random(in: -3...3),
-            y: engine.shipY - 16
+            x: engine.shipX + CGFloat.random(in: -4...4),
+            y: engine.shipY - 26
         )
         fxLayer.addChild(p)
         p.run(.sequence([

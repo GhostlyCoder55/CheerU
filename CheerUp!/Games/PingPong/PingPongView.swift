@@ -117,6 +117,8 @@ final class PingPongViewModel: PingPongSceneDelegate {
             speechText = LanguageManager.shared.tr("A Shield appeared! Safety net!", "Un Bouclier est apparu !", "¡Apareció un Escudo protector!")
         case .chaosBall:
             speechText = LanguageManager.shared.tr("Chaos Ball incoming! Watch out!", "Balle Chaos en vue ! Attention !", "¡Bola Caos en la mesa!")
+        case .doubleBall:
+            speechText = LanguageManager.shared.tr("Double Ball on the table!", "Double Balle sur la table !", "¡Doble Bola en la mesa!")
         }
     }
 
@@ -143,6 +145,9 @@ final class PingPongViewModel: PingPongSceneDelegate {
         case .chaosBall:
             mascotMood = .dizzy
             speechText = LanguageManager.shared.tr("CHAOS BALL! Wild bounces ahead!", "BALLE CHAOS ! Rebonds imprévisibles !", "¡BOLA CAOS! ¡Rebotes locos!")
+        case .doubleBall:
+            mascotMood = .party
+            speechText = LanguageManager.shared.tr("DOUBLE BALL! Twice the action!", "DOUBLE BALLE ! Deux fois plus d'action !", "¡DOBLE BOLA! ¡Doble acción!")
         }
     }
 
@@ -470,54 +475,30 @@ struct PingPongView: View {
 
     private var activePowerUpsBar: some View {
         HStack(spacing: 8) {
-            // Live callout comment right where "Hit glowing icons..." used to be
-            if let callout = viewModel.calloutText {
-                HStack(spacing: 6) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(viewModel.calloutColor)
-                    Text(callout)
-                        .font(.system(size: 12, weight: .black, design: .rounded))
-                        .foregroundStyle(viewModel.calloutColor)
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 6)
-                .frame(height: 34)
-                .background(CheerUpColors.darkBlue.opacity(0.95))
-                .clipShape(Capsule())
-                .overlay(
-                    Capsule()
-                        .stroke(viewModel.calloutColor.opacity(0.65), lineWidth: 1.5)
-                )
-                .transition(.scale.combined(with: .opacity))
-            }
-
             ForEach(viewModel.activePowerUps) { item in
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(item.type.color)
-                        .frame(width: 8, height: 8)
-
-                    Text(item.type.shortBadge)
-                        .font(.system(size: 11, weight: .black, design: .rounded))
-                        .foregroundStyle(.white)
+                HStack(spacing: 7) {
+                    Image(uiImage: PingPongPixelArt.shared.powerUpImage(for: item.type))
+                        .interpolation(.none)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 18, height: 18)
 
                     // Countdown bar
                     ZStack(alignment: .leading) {
                         Capsule()
                             .fill(Color.white.opacity(0.18))
-                            .frame(width: 34, height: 6)
+                            .frame(width: 40, height: 6)
                         Capsule()
                             .fill(item.type.color)
-                            .frame(width: max(2, 34 * CGFloat(item.progress)), height: 6)
+                            .frame(width: max(2, 40 * CGFloat(item.progress)), height: 6)
                     }
 
                     Text(String(format: "%.0fs", ceil(item.remaining)))
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
                         .foregroundStyle(CheerUpColors.lightGrey)
                         .monospacedDigit()
                 }
-                .padding(.horizontal, 10)
+                .padding(.horizontal, 11)
                 .padding(.vertical, 6)
                 .frame(height: 34)
                 .background(CheerUpColors.darkBlue.opacity(0.92))
@@ -532,7 +513,6 @@ struct PingPongView: View {
         .frame(minHeight: 36)
         .allowsHitTesting(false)
         .animation(.spring(response: 0.35, dampingFraction: 0.75), value: viewModel.activePowerUps)
-        .animation(.spring(response: 0.35, dampingFraction: 0.75), value: viewModel.calloutText)
     }
 
     // MARK: - Pause Overlay

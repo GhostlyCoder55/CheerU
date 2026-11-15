@@ -16,6 +16,7 @@ struct ArcadeHomeView: View {
         (.gravity,  CheerUpColors.GameGradient.gravity),
         (.rush,     CheerUpColors.GameGradient.rush),
         (.wheels,   CheerUpColors.GameGradient.wheels),
+        (.chess,    CheerUpColors.GameGradient.chess),
     ]
 
     var body: some View {
@@ -30,12 +31,12 @@ struct ArcadeHomeView: View {
 
             GeometryReader { geometry in
                 let totalHeight = geometry.size.height
-                // Adaptive spacing & card height so all 5 cards and header fit on a single static screen without scrolling
-                let cardSpacing: CGFloat = totalHeight < 700 ? 8 : (totalHeight < 800 ? 10 : 12)
-                let headerBottomSpacing: CGFloat = totalHeight < 700 ? 8 : (totalHeight < 800 ? 12 : 16)
-                // Reserve header height (~54pt) + headerBottomSpacing + 4 card spacings + top/bottom margins
-                let reserved: CGFloat = 54 + headerBottomSpacing + (cardSpacing * 4) + 12
-                let computedCardHeight: CGFloat = max(78, min(120, (totalHeight - reserved) / 5))
+                // Adaptive spacing & card height so all cards and header fit on a single static screen without scrolling
+                let cardSpacing: CGFloat = totalHeight < 700 ? 7 : (totalHeight < 800 ? 8 : 10)
+                let headerBottomSpacing: CGFloat = totalHeight < 700 ? 6 : (totalHeight < 800 ? 10 : 12)
+                let cardCount = CGFloat(games.count)
+                let reserved: CGFloat = 54 + headerBottomSpacing + (cardSpacing * max(0, cardCount - 1)) + 12
+                let computedCardHeight: CGFloat = max(68, min(112, (totalHeight - reserved) / max(1, cardCount)))
 
                 VStack(spacing: 0) {
                     header
@@ -71,14 +72,25 @@ struct ArcadeHomeView: View {
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()
-                .presentationDetents([.medium])
+                .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+                .presentationCornerRadius(28)
+                .presentationBackground {
+                    LinearGradient(
+                        colors: [CheerUpColors.darkBlue, CheerUpColors.deepNavy],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                }
         }
         .onAppear {
             loadScores()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
                 appeared = true
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
+            loadScores()
         }
     }
 

@@ -5,6 +5,7 @@
 
 import Testing
 import CoreGraphics
+import UIKit
 @testable import CheerUp_
 
 struct CheerUp_Tests {
@@ -137,11 +138,43 @@ struct CheerUp_Tests {
         let engine = TapEngine()
         engine.startGame()
         #expect(engine.particles.isEmpty)
+        #expect(engine.burstRings.isEmpty)
 
         // Find an incorrect cube
         let wrongCube = TapCube(id: 99, name: "INVALID", color: .black, hex: 0x000000)
         engine.selectCube(wrongCube, tapPoint: .zero)
         #expect(engine.particles.isEmpty)
+        #expect(engine.burstRings.isEmpty)
+    }
+
+    @Test func tapEngineConfettiPhysicsDecaysAndCleansUp() async throws {
+        let engine = TapEngine()
+        let ring = TapBurstRing(x: 100, y: 200, color: .white)
+        let particle = TapPixelParticle(
+            x: 100,
+            y: 200,
+            vx: 300,
+            vy: -400,
+            rotation: 0,
+            vr: 180,
+            size: 12,
+            color: .white,
+            lifetime: 0.5
+        )
+        engine.burstRings = [ring]
+        engine.particles = [particle]
+
+        engine.tick(dt: 0.1)
+        #expect(engine.particles.count == 1)
+        #expect(engine.particles[0].x > 100)
+        #expect(engine.burstRings.count == 1)
+        #expect(engine.burstRings[0].radius > 22)
+
+        for _ in 0..<10 {
+            engine.tick(dt: 0.1)
+        }
+        #expect(engine.particles.isEmpty)
+        #expect(engine.burstRings.isEmpty)
     }
 
     @Test func wheelsAllOutcomesHaveTrilingualSupport() async throws {
@@ -172,11 +205,46 @@ struct CheerUp_Tests {
     }
 
     @Test func pingPongPowerUpsAndDifficultyProgression() async throws {
-        #expect(PingPongPowerUpType.allCases.count == 7)
+        #expect(PingPongPowerUpType.allCases.count == 8)
+        #expect(PingPongPowerUpType.allCases.contains(.doubleBall))
+        #expect(PingPongPowerUpType.doubleBall.uiColorHex == 0xF5F8FC)
+        for powerUp in PingPongPowerUpType.allCases {
+            let img = PingPongPixelArt.shared.powerUpImage(for: powerUp)
+            #expect(img.size.width > 0 && img.size.height > 0)
+        }
         let tier1 = PingPongDifficultyTier.forScore(0, rallyCount: 0)
         let tierMax = PingPongDifficultyTier.forScore(55, rallyCount: 20)
         #expect(tier1 == .rookie)
         #expect(tierMax == .unstoppable)
+
+        // Verify Double Ball persistence & independent ball lifecycle
+        let engine = PingPongEngine()
+        engine.reset(mode: .endless)
+        for _ in 0..<60 {
+            _ = engine.update(dt: 0.03, targetPlayerX: 180)
+            if engine.ballVel.dy < 0 {
+                break
+            }
+        }
+        engine.spawnExtraBall()
+        #expect(engine.hasExtraBall)
+        #expect(!engine.activePowerUps.contains(where: { $0.type == .doubleBall }))
+
+        // Move paddle out of the way (far left) and step until the first ball is missed:
+        // Game must NOT end when the first of the two balls is missed, only when both are missed.
+        var sawSingleBallRemaining = false
+        for _ in 0..<1200 {
+            _ = engine.update(dt: 0.02, targetPlayerX: 20)
+            if !engine.hasExtraBall && !engine.isGameOver {
+                sawSingleBallRemaining = true
+                #expect(engine.ballVel.dy != 0)
+            }
+            if engine.isGameOver {
+                break
+            }
+        }
+        #expect(sawSingleBallRemaining)
+        #expect(engine.isGameOver)
     }
 
     @Test func gravityEngineMovementAndBoundaryShift() async throws {
@@ -209,6 +277,7 @@ struct CheerUp_Tests {
         #expect(gcm.leaderboardID(for: .pingPong) == "com.gc.CheerUp.pingpong.endless")
         #expect(gcm.leaderboardID(for: .gravity) == "com.gc.CheerUp.gravity.endless")
         #expect(gcm.leaderboardID(for: .rush) == "com.gc.CheerUp.rush.endless")
+        #expect(gcm.leaderboardID(for: .chess) == nil)
         #expect(gcm.leaderboardID(for: .wheels) == nil)
     }
 
@@ -221,7 +290,7 @@ struct CheerUp_Tests {
         }
     }
 
-    @Test func notificationManagerConfiguresTwoDayTrilingualReminders() async throws {
+    @Test @MainActor func notificationManagerConfiguresTwoDayTrilingualReminders() async throws {
         #expect(NotificationManager.twoDaysInterval == 172_800)
         #expect(NotificationManager.reminderIdentifier == "cheerup.reminder.twoDays")
         #expect(!NotificationManager.reminderMessages.isEmpty)
@@ -369,5 +438,234 @@ struct CheerUp_Tests {
         #expect(pingPong.hasUsedRewardedContinue)
         pingPong.reset(mode: .endless)
         #expect(!pingPong.hasUsedRewardedContinue)
+    }
+
+    // MARK: - Chess Mini-Game Comprehensive Tests
+
+    @Test func chessIdentifierAndIntegrationMetadata() async throws {
+        #expect(GameIdentifier.chess.title == "CHESS")
+        #expect(GameIdentifier.chess.isGame)
+        #expect(!GameIdentifier.chess.subtitle.isEmpty)
+        #expect(!GameIdentifier.chess.shortDescription.isEmpty)
+
+        // "Best: X" on Arcade Home tracks the number of chess games won
+        let defaults = UserDefaults.standard
+        let savedBest = defaults.object(forKey: "cheerup.highscore.chess")
+        defer {
+            if let savedBest { defaults.set(savedBest, forKey: "cheerup.highscore.chess") } else { defaults.removeObject(forKey: "cheerup.highscore.chess") }
+        }
+
+        defaults.removeObject(forKey: "cheerup.highscore.chess")
+        #expect(ScoreManager.shared.highScore(for: .chess) == 0)
+
+        // First CHESS win updates Best to 1
+        #expect(ScoreManager.shared.recordChessOutcome(winner: .light) == 1)
+        #expect(ScoreManager.shared.highScore(for: .chess) == 1)
+        // Second win increments Best to 2
+        #expect(ScoreManager.shared.recordChessOutcome(winner: .light) == 2)
+        #expect(ScoreManager.shared.highScore(for: .chess) == 2)
+        // Loss does not reset games won; next win increments Best to 3
+        #expect(ScoreManager.shared.recordChessOutcome(winner: .dark) == 2)
+        #expect(ScoreManager.shared.recordChessOutcome(winner: .light) == 3)
+        // Winning as Brown (.dark) also increments Best to 4
+        #expect(ScoreManager.shared.recordChessOutcome(winner: .dark, humanColor: .dark) == 4)
+        #expect(ScoreManager.shared.highScore(for: .chess) == 4)
+        #expect(WheelsData.outcomes.count >= 55)
+    }
+
+    @Test func chessOpeningPositionAndLegalMovesCount() async throws {
+        let state = ChessBoardState()
+        #expect(state.turn == .light)
+        #expect(state.status == .playing)
+        // Standard chess opening has 16 pawn pushes + 4 knight moves = 20 legal moves
+        #expect(state.legalMoves().count == 20)
+        #expect(ChessSquare(algebraic: "a1")?.isLightSquare == false)
+        #expect(ChessSquare(algebraic: "h1")?.isLightSquare == true)
+        #expect(ChessSquare(algebraic: "a8")?.isLightSquare == true)
+    }
+
+    @Test func chessScholarsMateDetection() async throws {
+        var state = ChessBoardState()
+        func play(_ from: String, _ to: String) {
+            let f = ChessSquare(algebraic: from)!
+            let t = ChessSquare(algebraic: to)!
+            let mv = state.legalMoves(from: f).first { $0.to == t }!
+            let moved = state.makeMove(mv)
+            #expect(moved)
+        }
+        play("e2", "e4")
+        play("e7", "e5")
+        play("f1", "c4")
+        play("b8", "c6")
+        play("d1", "h5")
+        play("g8", "f6")
+        play("h5", "f7") // Checkmate!
+        #expect(state.status == .checkmate(winner: .light))
+        #expect(state.legalMoves().isEmpty)
+    }
+
+    @Test func chessCastlingRulesAndThroughCheckPrevention() async throws {
+        // Clear both sides for White
+        var clean = ChessBoardState(fen: "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1")!
+        let kingSq = ChessSquare(algebraic: "e1")!
+        let kingMoves = clean.legalMoves(from: kingSq)
+        #expect(kingMoves.contains { $0.isCastlingKingside && $0.to == ChessSquare(algebraic: "g1")! })
+        #expect(kingMoves.contains { $0.isCastlingQueenside && $0.to == ChessSquare(algebraic: "c1")! })
+
+        // Execute queenside castle and verify rook lands on d1
+        let qCastle = kingMoves.first { $0.isCastlingQueenside }!
+        let castled = clean.makeMove(qCastle)
+        #expect(castled)
+        #expect(clean.piece(at: ChessSquare(algebraic: "c1")!)?.kind == .king)
+        #expect(clean.piece(at: ChessSquare(algebraic: "d1")!)?.kind == .rook)
+
+        // Attacking f1 blocks kingside castling
+        let f1Attacked = ChessBoardState(fen: "4k2r/8/8/8/8/5r2/8/R3K2R w KQkq - 0 1")!
+        let attackedKingMoves = f1Attacked.legalMoves(from: ChessSquare(algebraic: "e1")!)
+        #expect(!attackedKingMoves.contains { $0.isCastlingKingside })
+    }
+
+    @Test func chessEnPassantCaptureAndDiscoveredCheckGuard() async throws {
+        // Legal en passant: Black just played c7-c5 next to White pawn on d5
+        var epState = ChessBoardState(fen: "4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1")!
+        let e5 = ChessSquare(algebraic: "e5")!
+        let d6 = ChessSquare(algebraic: "d6")!
+        let epMove = epState.legalMoves(from: e5).first { $0.to == d6 && $0.isEnPassant }
+        #expect(epMove != nil)
+        let capturedEP = epState.makeMove(epMove!)
+        #expect(capturedEP)
+        #expect(epState.piece(at: ChessSquare(algebraic: "d5")!) == nil)
+        #expect(epState.piece(at: d6)?.kind == .pawn)
+
+        // Horizontal discovered check prevents en passant along rank 5
+        let pinnedEP = ChessBoardState(fen: "8/8/8/K1Pp3r/8/8/8/4k3 w - d6 0 1")!
+        let c5 = ChessSquare(algebraic: "c5")!
+        #expect(!pinnedEP.legalMoves(from: c5).contains { $0.isEnPassant })
+    }
+
+    @Test func chessPawnPromotionSupportsAllFourPieces() async throws {
+        for choice in PieceKind.promotableKinds {
+            var promoState = ChessBoardState(fen: "7k/4P3/8/8/8/8/8/4K3 w - - 0 1")!
+            let e7 = ChessSquare(algebraic: "e7")!
+            let e8 = ChessSquare(algebraic: "e8")!
+            let options = promoState.legalMoves(from: e7).filter { $0.to == e8 }
+            #expect(options.count == 4)
+            let chosen = options.first { $0.promotion == choice }!
+            let promoted = promoState.makeMove(chosen)
+            #expect(promoted)
+            #expect(promoState.piece(at: e8)?.kind == choice)
+        }
+    }
+
+    @Test func chessStalemateAndDrawConditions() async throws {
+        // Stalemate: Black king on a8, White queen c7, White king b6
+        let stale = ChessBoardState(fen: "k7/2Q5/1K6/8/8/8/8/8 b - - 0 1")!
+        #expect(stale.status == .stalemate)
+
+        // Insufficient material cases
+        let kVsK = ChessBoardState(fen: "4k3/8/8/8/8/8/8/4K3 w - - 0 1")!
+        #expect(kVsK.status == .drawInsufficientMaterial)
+
+        let sameBishops = ChessBoardState(fen: "4k1b1/8/8/8/8/8/8/4KB2 w - - 0 1")!
+        // f1 (5+0=5 light), g8 (6+7=13 light) -> both light squares
+        #expect(sameBishops.status == .drawInsufficientMaterial)
+
+        // 50-move rule at halfMoveClock = 100
+        let fifty = ChessBoardState(fen: "4k3/8/8/8/8/8/4R3/4K3 w - - 100 80")!
+        #expect(fifty.status == .drawFiftyMove)
+
+        // Threefold repetition with Knight back-and-forth
+        var rep = ChessBoardState()
+        func ply(_ f: String, _ t: String) {
+            let sqF = ChessSquare(algebraic: f)!
+            let sqT = ChessSquare(algebraic: t)!
+            let m = rep.legalMoves(from: sqF).first { $0.to == sqT }!
+            let ok = rep.makeMove(m)
+            #expect(ok)
+        }
+        for _ in 0..<2 {
+            ply("g1", "f3"); ply("g8", "f6")
+            ply("f3", "g1"); ply("f6", "g8")
+        }
+        #expect(rep.status == .drawThreefoldRepetition)
+    }
+
+    @Test @MainActor func chessAIDifficultiesUndoAndQuickClock() async throws {
+        for diff in ChessDifficulty.allCases {
+            // Forced mate-in-1 for Black on h2
+            let matePos = ChessBoardState(fen: "6k1/8/8/8/8/6Q1/7P/6K1 b - - 0 1")!
+            let aiMove = ChessAI.bestMove(for: matePos, difficulty: diff)
+            #expect(aiMove != nil)
+        }
+
+        // Session Undo & 3-Min / 5-Min Quick Clocks
+        let session = ChessSessionEngine(difficulty: .intermediate, timeControl: .threeMinutes)
+        #expect(session.whiteTimeRemaining == 180)
+        #expect(session.blackTimeRemaining == 180)
+        let e2 = ChessSquare(algebraic: "e2")!
+        let e4 = ChessSquare(algebraic: "e4")!
+        let whiteMove = session.state.legalMoves(from: e2).first { $0.to == e4 }!
+        #expect(session.performMove(whiteMove))
+        let e7 = ChessSquare(algebraic: "e7")!
+        let e5 = ChessSquare(algebraic: "e5")!
+        let blackMove = session.state.legalMoves(from: e7).first { $0.to == e5 }!
+        #expect(session.performMove(blackMove))
+        #expect(session.canUndo)
+
+        // Undo rolls back AI + Player turns back to starting White turn
+        #expect(session.undoToPlayerTurn() == 2)
+        #expect(session.state.turn == .light)
+        #expect(session.state.piece(at: e4) == nil)
+        #expect(session.state.piece(at: e2)?.kind == .pawn)
+
+        // Clock timeout check
+        let timedWinner = session.tickClock(elapsed: 181)
+        #expect(timedWinner == .dark)
+        #expect(session.state.status == .timeout(winner: .dark))
+
+        // Reset restores 5-min clock cleanly
+        session.reset(difficulty: .advanced, timeControl: .fiveMinutes)
+        #expect(session.whiteTimeRemaining == 300)
+        #expect(session.state.status == .playing)
+    }
+
+    @Test func rushSpritesFlameBoostOrbAndContactCalibration() async throws {
+        // 1. All 8 new spaceship sprites, 12 flame-boost sprites, and 8 asteroid sprites exist in Assets.xcassets
+        for i in 0..<8 {
+            #expect(UIImage(named: "rush_ship_\(i)") != nil)
+            #expect(UIImage(named: "rush_asteroid_\(i)") != nil)
+        }
+        for i in 0..<12 {
+            #expect(UIImage(named: "rush_flame_ship_\(i)") != nil)
+        }
+
+        // 2. Flaming Orange Orb properties: 5.0s duration, flaming orange color (0xFF5500)
+        #expect(RushPowerUpType.flameBoost.duration == 5.0)
+        #expect(RushPowerUpType.flameBoost.colorHex == 0xFF5500)
+        #expect(!RushPowerUpType.flameBoost.badgeTitle.isEmpty)
+
+        // 3. Contact Calibration: solid hull vs exhaust tail
+        let engine = RushEngine()
+        engine.reset()
+        let directHullHit = RushMeteor(
+            x: engine.shipX,
+            y: engine.shipY + 20.0,
+            vx: 0,
+            vy: -100,
+            rotation: 0,
+            angularVelocity: 0
+        )
+        #expect(engine.isMeteorContactingShip(directHullHit))
+
+        // Far below the hull in the lower exhaust trail or outside solid rock radius should NOT falsely contact
+        let belowExhaust = RushMeteor(
+            x: engine.shipX,
+            y: engine.shipY - 39.0,
+            vx: 0,
+            vy: -100,
+            rotation: 0,
+            angularVelocity: 0
+        )
+        #expect(!engine.isMeteorContactingShip(belowExhaust))
     }
 }

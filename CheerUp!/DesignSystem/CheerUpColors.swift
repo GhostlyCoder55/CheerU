@@ -69,6 +69,9 @@ enum CheerUpColors {
         static let rush: [Color] = [
             Color(hex: 0xFF3396), Color(hex: 0x3D2356)
         ]
+        static let chess: [Color] = [
+            Color(hex: 0xC8A57B), Color(hex: 0x8C5835), Color(hex: 0x42281D)
+        ]
         static let wheels: [Color] = [
             Color(hex: 0xF75C22), Color(hex: 0x432357)
         ]

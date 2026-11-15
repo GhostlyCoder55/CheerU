@@ -208,6 +208,7 @@ struct ArcadeRootView: View {
         .pingPong: CheerUpColors.GameGradient.pingPong,
         .gravity:  CheerUpColors.GameGradient.gravity,
         .rush:     CheerUpColors.GameGradient.rush,
+        .chess:    CheerUpColors.GameGradient.chess,
         .wheels:   CheerUpColors.GameGradient.wheels,
     ]
 
@@ -261,6 +262,8 @@ struct ArcadeRootView: View {
             GravityView(onExit: { appState.exitToArcade() })
         case .rush:
             RushView(onExit: { appState.exitToArcade() })
+        case .chess:
+            ChessView(onExit: { appState.exitToArcade() })
         case .wheels:
             WheelsView(onExit: { appState.exitToArcade() })
         }

@@ -6,7 +6,7 @@ import AVFoundation
 // Data structures, Game Center integration, and retro synth audio for CheerUp! Arcade: RUSH.
 
 struct RushMeteor: Identifiable, Equatable {
-    static let collisionRadius: CGFloat = 21.0
+    static let collisionRadius: CGFloat = 19.5
     static let grazeRadius: CGFloat = 52.0
 
     let id: UUID = UUID()
@@ -16,15 +16,17 @@ struct RushMeteor: Identifiable, Equatable {
     var vy: CGFloat
     var rotation: CGFloat
     var angularVelocity: CGFloat
+    var variantIndex: Int = Int.random(in: 0..<8)
     var hasGrantedNearMiss: Bool = false
     var hasPassedShip: Bool = false
 }
 
-// MARK: - Little Power Up Orbs (Shield & Slow Speed Only)
+// MARK: - Little Power Up Orbs (Shield, Slow Speed & Rare Flaming Orange Orb)
 
 enum RushPowerUpType: String, CaseIterable, Identifiable {
-    case shield   = "shield"
-    case slowTime = "slowTime"
+    case shield     = "shield"
+    case slowTime   = "slowTime"
+    case flameBoost = "flameBoost"
 
     var id: String { rawValue }
 
@@ -34,27 +36,32 @@ enum RushPowerUpType: String, CaseIterable, Identifiable {
             return LanguageManager.shared.tr("SHIELD ORB", "ORBE BOUCLIER", "ORBE ESCUDO")
         case .slowTime:
             return LanguageManager.shared.tr("SLOW ORB", "ORBE RALENTI", "ORBE LENTO")
+        case .flameBoost:
+            return LanguageManager.shared.tr("FLAME ORB", "ORBE FLAMME", "ORBE LLAMA")
         }
     }
 
     var duration: Double {
         switch self {
-        case .shield:   return 12.0 // Or until absorbing 1 meteor hit
-        case .slowTime: return 6.0  // Slows down meteor speed
+        case .shield:     return 12.0 // Or until absorbing 1 meteor hit
+        case .slowTime:   return 6.0  // Slows down meteor speed
+        case .flameBoost: return 5.0  // 5s intangibility & max speed boost
         }
     }
 
     var color: Color {
         switch self {
-        case .shield:   return Color(hex: 0x22D3EE) // Glowing Cyan Orb
-        case .slowTime: return Color(hex: 0xA855F7) // Glowing Violet Orb
+        case .shield:     return Color(hex: 0x22D3EE) // Glowing Cyan Orb
+        case .slowTime:   return Color(hex: 0xA855F7) // Glowing Violet Orb
+        case .flameBoost: return Color(hex: 0xFF5500) // Flaming Orange Orb
         }
     }
 
     var colorHex: UInt {
         switch self {
-        case .shield:   return 0x22D3EE
-        case .slowTime: return 0xA855F7
+        case .shield:     return 0x22D3EE
+        case .slowTime:   return 0xA855F7
+        case .flameBoost: return 0xFF5500
         }
     }
 }

@@ -147,6 +147,17 @@ final class RushViewModel: RushSceneDelegate {
                     "Orbe Ralenti ! Météores ralentis !",
                     "¡Orbe Lento! ¡Meteoros más lentos!"
                 )
+            case .flameBoost:
+                self.mascotMood = .party
+                self.speechText = LanguageManager.shared.tr(
+                    "FLAME ORB! 5s Intangible & Max Speed!",
+                    "ORBE FLAMME ! 5s Intangible & Vitesse Max !",
+                    "¡ORBE LLAMA! ¡5s Intangible y Velocidad Máx!"
+                )
+                self.showBanner(
+                    LanguageManager.shared.tr("FLAME BOOST! 5S INTANGIBLE!", "TURBO FLAMME ! 5S INTANGIBLE !", "¡TURBO LLAMA! ¡5S INTANGIBLE!"),
+                    color: Color(hex: 0xFF5500)
+                )
             }
         }
     }

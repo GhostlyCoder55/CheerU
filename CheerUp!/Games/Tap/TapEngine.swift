@@ -34,6 +34,8 @@ final class TapEngine {
     // Grid of Cubes
     var cubeOrder: [TapCube] = []
     var particles: [TapPixelParticle] = []
+    var burstRings: [TapBurstRing] = []
+    private var lastFrameDate: Date? = nil
 
     // Milestone Rule Banner
     var bannerText: String? = nil
@@ -107,6 +109,8 @@ final class TapEngine {
         hasUsedRewardedContinue = false
         lastTargetColorId = nil
         particles = []
+        burstRings = []
+        lastFrameDate = nil
         mascotMood = .happy
         speechText = LanguageManager.shared.tr("Let's go! Tap fast, think faster.", "C'est parti ! Touchez vite.", "¡Vamos! Toca rápido.")
         AudioManager.shared.play(.pop)
@@ -329,17 +333,58 @@ final class TapEngine {
         }
     }
 
+    func resetFrameTiming() {
+        lastFrameDate = nil
+    }
+
+    func update(currentDate: Date) {
+        let dt: Double
+        if let last = lastFrameDate {
+            dt = min(max(currentDate.timeIntervalSince(last), 0), 0.05)
+        } else {
+            dt = 1.0 / 60.0
+        }
+        lastFrameDate = currentDate
+        tick(dt: dt)
+    }
+
     func tick(dt: Double = 0.05) {
-        // Update confetti particles with rotation & gravity matching Wheels style
+        // Update subtle tap shockwave rings
+        if !burstRings.isEmpty {
+            for i in burstRings.indices {
+                burstRings[i].age += dt
+                let t = min(1.0, burstRings[i].age / burstRings[i].duration)
+                let eased = 1.0 - pow(1.0 - t, 3.0)
+                burstRings[i].radius = 22 + (burstRings[i].maxRadius - 22) * CGFloat(eased)
+                burstRings[i].opacity = 0.7 * (1.0 - eased)
+            }
+            burstRings.removeAll(where: { $0.age >= $0.duration })
+        }
+
+        // Update explosive confetti particles with air drag, gravity, lateral sway & 3D tumble
         if !particles.isEmpty {
             for i in particles.indices {
-                particles[i].x += particles[i].vx * CGFloat(dt)
+                particles[i].age += dt
+                let damping = CGFloat(pow(particles[i].drag, dt))
+                particles[i].vx *= damping
+                particles[i].vy *= damping
+                particles[i].vy += particles[i].gravity * CGFloat(dt)
+
+                particles[i].swayPhase += particles[i].swaySpeed * dt
+                let flutter = CGFloat(sin(particles[i].swayPhase)) * particles[i].swayAmplitude
+                particles[i].x += (particles[i].vx + flutter) * CGFloat(dt)
                 particles[i].y += particles[i].vy * CGFloat(dt)
-                particles[i].vy += 420 * CGFloat(dt) // gravity
-                particles[i].rotation += particles[i].vr * 28 * dt
-                particles[i].opacity -= dt * 1.5
+
+                particles[i].rotation += particles[i].vr * dt
+                particles[i].tilt += particles[i].tiltSpeed * dt
+
+                let lifeProgress = particles[i].age / particles[i].lifetime
+                if lifeProgress >= 0.58 {
+                    let fadeProgress = min(1.0, (lifeProgress - 0.58) / 0.42)
+                    particles[i].opacity = max(0, 1.0 - pow(fadeProgress, 1.5))
+                }
             }
-            particles.removeAll(where: { $0.opacity <= 0 })
+            particles.removeAll(where: { $0.age >= $0.lifetime || $0.opacity <= 0.01 })
         }
 
         guard isLive, !isOver else { return }
@@ -354,35 +399,114 @@ final class TapEngine {
     }
 
     private func spawnConfetti(at point: CGPoint, color: Color) {
-        let palette = [
+        burstRings.append(TapBurstRing(x: point.x, y: point.y, color: color))
+        if burstRings.count > 6 {
+            burstRings.removeFirst(burstRings.count - 6)
+        }
+
+        let palette: [Color] = [
+            color,
             color,
             color,
             Color.white,
             Color(hex: 0xFFC83D), // Yellow
             Color(hex: 0x2EDB8A), // Green
             Color(hex: 0x3D7BFF), // Blue
-            Color(hex: 0xFF4B5C)  // Red
+            Color(hex: 0xFF4B5C), // Red
+            Color(hex: 0xFF7AB6)  // Pink accent
         ]
+
         var newParticles: [TapPixelParticle] = []
+        newParticles.reserveCapacity(56)
+
+        // Layer 1: Explosive radial popper burst around the tapped cube
         for _ in 0..<36 {
             let angle = Double.random(in: 0...(2 * .pi))
-            let speed = CGFloat.random(in: 120...360)
-            let vx = cos(angle) * speed
-            let vy = sin(angle) * speed - CGFloat.random(in: 60...160)
+            let speed = CGFloat.random(in: 300...760)
+            let jitterX = CGFloat.random(in: -18...18)
+            let jitterY = CGFloat.random(in: -18...18)
+            let shape: TapConfettiShape = Bool.random() ? .ribbon : .square
+
+            newParticles.append(TapPixelParticle(
+                x: point.x + jitterX,
+                y: point.y + jitterY,
+                vx: cos(angle) * speed,
+                vy: sin(angle) * speed - CGFloat.random(in: 140...300),
+                rotation: Double.random(in: 0...360),
+                vr: Double.random(in: -280...280),
+                tilt: Double.random(in: 0...(2 * .pi)),
+                tiltSpeed: Double.random(in: 7...15),
+                swayPhase: Double.random(in: 0...(2 * .pi)),
+                swaySpeed: Double.random(in: 6...10),
+                swayAmplitude: CGFloat.random(in: 18...42),
+                drag: Double.random(in: 0.04...0.10),
+                gravity: CGFloat.random(in: 480...680),
+                size: CGFloat.random(in: 9...15),
+                aspect: shape == .ribbon ? CGFloat.random(in: 0.42...0.58) : 0.85,
+                shape: shape,
+                color: palette.randomElement() ?? color,
+                lifetime: Double.random(in: 1.05...1.55)
+            ))
+        }
+
+        // Layer 2: High upward canopy fountain ribbons
+        for _ in 0..<14 {
+            let spreadAngle = Double.random(in: (-0.82)...(0.82)) - (.pi / 2)
+            let speed = CGFloat.random(in: 520...860)
+
+            newParticles.append(TapPixelParticle(
+                x: point.x + CGFloat.random(in: -14...14),
+                y: point.y + CGFloat.random(in: -14...14),
+                vx: cos(spreadAngle) * speed,
+                vy: sin(spreadAngle) * speed,
+                rotation: Double.random(in: 0...360),
+                vr: Double.random(in: -320...320),
+                tilt: Double.random(in: 0...(2 * .pi)),
+                tiltSpeed: Double.random(in: 8...16),
+                swayPhase: Double.random(in: 0...(2 * .pi)),
+                swaySpeed: Double.random(in: 5...9),
+                swayAmplitude: CGFloat.random(in: 24...50),
+                drag: Double.random(in: 0.05...0.11),
+                gravity: CGFloat.random(in: 420...580),
+                size: CGFloat.random(in: 10...16),
+                aspect: CGFloat.random(in: 0.4...0.55),
+                shape: .ribbon,
+                color: palette.randomElement() ?? color,
+                lifetime: Double.random(in: 1.2...1.65)
+            ))
+        }
+
+        // Layer 3: Crisp diamond sparkle glints
+        for _ in 0..<8 {
+            let angle = Double.random(in: 0...(2 * .pi))
+            let speed = CGFloat.random(in: 240...540)
 
             newParticles.append(TapPixelParticle(
                 x: point.x,
                 y: point.y,
-                vx: vx,
-                vy: vy,
+                vx: cos(angle) * speed,
+                vy: sin(angle) * speed - CGFloat.random(in: 80...180),
                 rotation: Double.random(in: 0...360),
-                vr: Double.random(in: -10...10),
-                size: CGFloat.random(in: 8...15),
-                color: palette.randomElement() ?? color,
-                opacity: 1.0
+                vr: Double.random(in: -200...200),
+                tilt: Double.random(in: 0...(2 * .pi)),
+                tiltSpeed: Double.random(in: 10...18),
+                swayPhase: 0,
+                swaySpeed: 6,
+                swayAmplitude: 10,
+                drag: 0.07,
+                gravity: 340,
+                size: CGFloat.random(in: 6...10),
+                aspect: 1.0,
+                shape: .diamond,
+                color: Bool.random() ? .white : Color(hex: 0xFFC83D),
+                lifetime: Double.random(in: 0.55...0.85)
             ))
         }
+
         particles.append(contentsOf: newParticles)
+        if particles.count > 180 {
+            particles.removeFirst(particles.count - 180)
+        }
     }
 
     private func finishGame() {

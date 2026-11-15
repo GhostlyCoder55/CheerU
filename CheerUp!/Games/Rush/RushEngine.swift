@@ -18,7 +18,7 @@ final class RushEngine {
     private var maxShipY: CGFloat { worldHeight - 190.0 }
 
     // MARK: - Player Spaceship State
-    let shipCollisionRadius: CGFloat = 11.0
+    let shipCollisionRadius: CGFloat = 15.0
     private(set) var shipX: CGFloat = 196.5
     private(set) var shipY: CGFloat = 190.0
     private(set) var shipVX: CGFloat = 0.0
@@ -48,7 +48,7 @@ final class RushEngine {
     private var meteorSpawnTimer: Double = 0.0
     private var powerUpSpawnTimer: Double = 6.5
     private var nextSurpriseEventTime: Double = 15.0
-    private var invulnerabilityTimer: Double = 0.0
+    private(set) var invulnerabilityTimer: Double = 0.0
 
     var hasShield: Bool {
         activeEffects.contains(where: { $0.type == .shield })
@@ -56,6 +56,10 @@ final class RushEngine {
 
     var isSlowTimeActive: Bool {
         activeEffects.contains(where: { $0.type == .slowTime })
+    }
+
+    var isFlameBoostActive: Bool {
+        activeEffects.contains(where: { $0.type == .flameBoost })
     }
 
     init() {
@@ -126,7 +130,9 @@ final class RushEngine {
         let dt = min(max(rawDt, 0.0), 1.0 / 20.0)
         var events: [RushEvent] = []
 
-        elapsedTime += dt
+        // During Flaming Orange Orb warp boost, flight speed and survival clock accelerate to max
+        let survivalMultiplier: Double = isFlameBoostActive ? 2.25 : 1.0
+        elapsedTime += dt * survivalMultiplier
         if invulnerabilityTimer > 0 {
             invulnerabilityTimer = max(0, invulnerabilityTimer - dt)
         }
@@ -145,7 +151,11 @@ final class RushEngine {
         for i in activeEffects.indices.reversed() {
             activeEffects[i].remaining -= dt
             if activeEffects[i].remaining <= 0 {
-                activeEffects.remove(at: i)
+                let expired = activeEffects.remove(at: i)
+                if expired.type == .flameBoost {
+                    // Brief grace window when coming out of warp intangibility
+                    invulnerabilityTimer = max(invulnerabilityTimer, 0.45)
+                }
             }
         }
 
@@ -153,7 +163,7 @@ final class RushEngine {
         updateSpecialEvents(dt: dt, events: &events)
 
         // 5. Progressive Meteor Spawning (Snappy pace that gets harder the longer you survive)
-        let speedScale: CGFloat = isSlowTimeActive ? 0.50 : 1.0
+        let speedScale: CGFloat = isFlameBoostActive ? 2.35 : (isSlowTimeActive ? 0.50 : 1.0)
         meteorSpawnTimer -= dt * Double(speedScale)
         if meteorSpawnTimer <= 0 {
             spawnRandomMeteor()
@@ -187,7 +197,8 @@ final class RushEngine {
         if let target {
             let clampedX = min(max(target.x, minShipX), maxShipX)
             let clampedY = min(max(target.y, minShipY), maxShipY)
-            let alpha = CGFloat(1.0 - pow(0.00008, dt))
+            let responseRate: Double = isFlameBoostActive ? 0.000001 : 0.00008
+            let alpha = CGFloat(1.0 - pow(responseRate, dt))
             shipX += (clampedX - shipX) * alpha
             shipY += (clampedY - shipY) * alpha
         }
@@ -305,7 +316,10 @@ final class RushEngine {
     private func spawnPowerUpOrb() {
         guard collectibles.count < 2 else { return }
         let type: RushPowerUpType
-        if !hasShield && Bool.random() {
+        // The Flaming Orange Orb is very rare and only appears after playing for a longer period (30s+)
+        if elapsedTime >= 30.0 && !isFlameBoostActive && Double.random(in: 0.0...1.0) < 0.12 {
+            type = .flameBoost
+        } else if !hasShield && Bool.random() {
             type = .shield
         } else {
             type = Bool.random() ? .slowTime : .shield
@@ -317,7 +331,7 @@ final class RushEngine {
                 type: type,
                 x: x,
                 y: worldHeight + 26.0,
-                vy: -145.0
+                vy: type == .flameBoost ? -175.0 : -145.0
             )
         )
     }
@@ -365,9 +379,19 @@ final class RushEngine {
 
     // MARK: - Meteors, Near-Miss & Collision Detection
 
-    private func updateMeteors(dt: Double, speedScale: CGFloat, events: inout [RushEvent]) {
-        let hitThreshold = RushMeteor.collisionRadius + shipCollisionRadius - 2.0
+    /// Checks whether a meteor's solid rocky core contacts the spaceship's hull (excluding exhaust flame).
+    func isMeteorContactingShip(_ meteor: RushMeteor) -> Bool {
+        let dx = meteor.x - shipX
+        let dy = meteor.y - shipY
+        // Ship hull is 44pt wide × 36pt tall centered at (shipX, shipY), meteor solid rock radius is 19.5pt.
+        let combinedRadiusX = RushMeteor.collisionRadius + shipCollisionRadius       // 34.5pt
+        let combinedRadiusY = RushMeteor.collisionRadius + shipCollisionRadius + 1.5 // 36.0pt
+        let normX = dx / combinedRadiusX
+        let normY = dy / combinedRadiusY
+        return (normX * normX + normY * normY) < 1.0
+    }
 
+    private func updateMeteors(dt: Double, speedScale: CGFloat, events: inout [RushEvent]) {
         for i in asteroids.indices.reversed() {
             asteroids[i].x += asteroids[i].vx * CGFloat(dt) * speedScale
             asteroids[i].y += asteroids[i].vy * CGFloat(dt) * speedScale
@@ -384,8 +408,17 @@ final class RushEngine {
             let meteor = asteroids[i]
             let dist = hypot(meteor.x - shipX, meteor.y - shipY)
 
-            // 1. Direct Collision Check
-            if dist < hitThreshold {
+            // 1. Direct Contact Check (Calibrated to solid asteroid rock & spaceship hull)
+            if isMeteorContactingShip(meteor) {
+                if isFlameBoostActive {
+                    // Ship is intangible during the 3s Flaming Orange Orb boost!
+                    if !meteor.hasGrantedNearMiss {
+                        asteroids[i].hasGrantedNearMiss = true
+                        nearMissStreak += 1
+                        events.append(.nearMiss(x: (meteor.x + shipX) * 0.5, y: (meteor.y + shipY) * 0.5, streak: nearMissStreak))
+                    }
+                    continue
+                }
                 if invulnerabilityTimer > 0 {
                     asteroids.remove(at: i)
                     continue

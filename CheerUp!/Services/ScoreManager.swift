@@ -24,6 +24,17 @@ final class ScoreManager {
         GameCenterManager.shared.submitScore(score, for: game)
     }
 
+    @discardableResult
+    func recordChessOutcome(winner: PieceColor?, humanColor: PieceColor = .light) -> Int {
+        let currentWins = highScore(for: .chess)
+        if winner == humanColor {
+            let updatedWins = currentWins + 1
+            updateHighScore(for: .chess, score: updatedWins)
+            return updatedWins
+        }
+        return currentWins
+    }
+
     func allHighScores() -> [GameIdentifier: Int] {
         var scores: [GameIdentifier: Int] = [:]
         for game in GameIdentifier.allCases {
@@ -40,6 +51,7 @@ enum GameIdentifier: String, CaseIterable, Identifiable {
     case pingPong = "pingPong"
     case gravity = "gravity"
     case rush = "rush"
+    case chess = "chess"
     case wheels = "wheels"
 
     var id: String { rawValue }
@@ -50,6 +62,7 @@ enum GameIdentifier: String, CaseIterable, Identifiable {
         case .pingPong: return "PING PONG"
         case .gravity:  return "GRAVITY"
         case .rush:     return "RUSH"
+        case .chess:    return "CHESS"
         case .wheels:   return "WHEELS"
         }
     }
@@ -64,6 +77,8 @@ enum GameIdentifier: String, CaseIterable, Identifiable {
             return LanguageManager.shared.tr("Serpent • Shifting World", "Serpent • Monde Mouvant", "Serpiente • Mundo Cambiante")
         case .rush:
             return LanguageManager.shared.tr("Starship • Meteor Dodge", "Vaisseau • Météores", "Nave • Esquiva Meteoros")
+        case .chess:
+            return LanguageManager.shared.tr("Classic • Pixel Strategy", "Classique • Stratégie Pixel", "Clásico • Estrategia Píxel")
         case .wheels:
             return LanguageManager.shared.tr("Surprise Wheel", "Roue Surprise", "Rueda Sorpresa")
         }
@@ -95,6 +110,12 @@ enum GameIdentifier: String, CaseIterable, Identifiable {
                 "Pilotez un mini vaisseau pixel à travers les météores. Survivez plus longtemps pour marquer plus !",
                 "Pilota una pequeña nave píxel entre meteoros. ¡Sobrevive más tiempo para sumar puntos!"
             )
+        case .chess:
+            return LanguageManager.shared.tr(
+                "Play traditional pixel-art chess against three AI levels or race the 3 and 5 minute clocks.",
+                "Jouez aux échecs pixel traditionnels contre trois niveaux d'IA ou défiez les horloges de 3 et 5 min.",
+                "Juega ajedrez píxel tradicional contra tres niveles de IA o reta los relojes de 3 y 5 minutos."
+            )
         case .wheels:
             return LanguageManager.shared.tr(
                 "Spin the wheel for fun surprises and quick challenges.",
@@ -114,6 +135,8 @@ enum GameIdentifier: String, CaseIterable, Identifiable {
             return "sparkles"
         case .rush:
             return "airplane"
+        case .chess:
+            return "crown.fill"
         case .wheels:
             return "slider.horizontal.3"
         }
@@ -121,7 +144,7 @@ enum GameIdentifier: String, CaseIterable, Identifiable {
 
     var isGame: Bool {
         switch self {
-        case .tap, .pingPong, .gravity, .rush: return true
+        case .tap, .pingPong, .gravity, .rush, .chess: return true
         case .wheels: return false
         }
     }

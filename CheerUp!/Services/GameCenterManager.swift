@@ -18,6 +18,7 @@ final class GameCenterManager {
         case .pingPong: return "com.gc.CheerUp.pingpong.endless"
         case .gravity:  return "com.gc.CheerUp.gravity.endless"
         case .rush:     return "com.gc.CheerUp.rush.endless"
+        case .chess:    return nil
         case .wheels:   return nil
         }
     }

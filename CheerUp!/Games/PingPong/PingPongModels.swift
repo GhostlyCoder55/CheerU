@@ -44,6 +44,7 @@ enum PingPongPowerUpType: String, CaseIterable, Identifiable {
     case doublePoints = "doublePoints"
     case shield       = "shield"
     case chaosBall    = "chaosBall"
+    case doubleBall   = "doubleBall"
 
     var id: String { rawValue }
 
@@ -63,6 +64,8 @@ enum PingPongPowerUpType: String, CaseIterable, Identifiable {
             return LanguageManager.shared.tr("SHIELD", "BOUCLIER", "ESCUDO")
         case .chaosBall:
             return LanguageManager.shared.tr("CHAOS BALL", "BALLE CHAOS", "BOLA CAOS")
+        case .doubleBall:
+            return LanguageManager.shared.tr("DOUBLE BALL", "DOUBLE BALLE", "DOBLE BOLA")
         }
     }
 
@@ -75,6 +78,7 @@ enum PingPongPowerUpType: String, CaseIterable, Identifiable {
         case .doublePoints: return "2X PTS"
         case .shield:       return "SHIELD"
         case .chaosBall:    return "CHAOS"
+        case .doubleBall:   return "2X BALL"
         }
     }
 
@@ -87,6 +91,7 @@ enum PingPongPowerUpType: String, CaseIterable, Identifiable {
         case .doublePoints: return 10.0
         case .shield:       return 14.0
         case .chaosBall:    return 7.0
+        case .doubleBall:   return 10.0
         }
     }
 
@@ -99,6 +104,7 @@ enum PingPongPowerUpType: String, CaseIterable, Identifiable {
         case .doublePoints: return Color(hex: 0xFF7AB6) // Neon Pink
         case .shield:       return Color(hex: 0x00D2FF) // Cyan Shield
         case .chaosBall:    return Color(hex: 0xA855F7) // Chaos Purple
+        case .doubleBall:   return Color(hex: 0xF5F8FC) // Crisp Default-Ball White
         }
     }
 
@@ -111,6 +117,7 @@ enum PingPongPowerUpType: String, CaseIterable, Identifiable {
         case .doublePoints: return 0xFF7AB6
         case .shield:       return 0x00D2FF
         case .chaosBall:    return 0xA855F7
+        case .doubleBall:   return 0xF5F8FC
         }
     }
 

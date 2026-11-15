@@ -1,10 +1,9 @@
 import SwiftUI
-import Combine
 
 // MARK: - TAP View
 // Full native implementation of the CheerUp! game vision:
 // Mascot speech bubble stage, instruction card with live countdown bar,
-// tactile 3D cube buttons, pixel explosion confetti, and milestone banners.
+// tactile 3D cube buttons, explosive 3D tumbling confetti, and milestone banners.
 
 struct TapView: View {
     let onExit: () -> Void
@@ -12,9 +11,48 @@ struct TapView: View {
     @State private var engine = TapEngine()
     @State private var pausedByScenePhase = false
     @State private var hasStartedSession = false
-    private let timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
+    @State private var cubeCenters: [Int: CGPoint] = [:]
+
+    private var shouldRunLoop: Bool {
+        scenePhase == .active && ((engine.isLive && !engine.isOver) || !engine.particles.isEmpty || !engine.burstRings.isEmpty)
+    }
 
     var body: some View {
+        TimelineView(.animation(paused: !shouldRunLoop)) { timeline in
+            arenaContent
+                .onChange(of: timeline.date) { _, newDate in
+                    guard shouldRunLoop else { return }
+                    engine.update(currentDate: newDate)
+                }
+        }
+        .onChange(of: shouldRunLoop) { _, isRunning in
+            if isRunning {
+                engine.resetFrameTiming()
+            }
+        }
+        .onAppear {
+            guard !hasStartedSession else { return }
+            hasStartedSession = true
+            engine.startGame()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase != .active {
+                engine.resetFrameTiming()
+                if engine.isLive {
+                    pausedByScenePhase = true
+                    engine.isLive = false
+                }
+            } else if pausedByScenePhase && !engine.isOver {
+                pausedByScenePhase = false
+                engine.resetFrameTiming()
+                engine.isLive = true
+            } else {
+                pausedByScenePhase = false
+            }
+        }
+    }
+
+    private var arenaContent: some View {
         ZStack {
             // Background: Dark Slate Gradient Palette (#253745 -> #11212D -> #06141B)
             LinearGradient(
@@ -91,19 +129,54 @@ struct TapView: View {
                 .transition(.scale.combined(with: .opacity))
             }
 
-            // Canvas: Wheels-style Confetti Explosion
-            if !engine.particles.isEmpty {
+            // Canvas: Smooth 60/120fps Explosive 3D Confetti
+            if !engine.particles.isEmpty || !engine.burstRings.isEmpty {
                 Canvas { context, _ in
+                    for ring in engine.burstRings {
+                        var ringCtx = context
+                        ringCtx.opacity = ring.opacity
+                        let rect = CGRect(
+                            x: ring.x - ring.radius,
+                            y: ring.y - ring.radius,
+                            width: ring.radius * 2,
+                            height: ring.radius * 2
+                        )
+                        ringCtx.stroke(
+                            Path(ellipseIn: rect),
+                            with: .color(ring.color),
+                            lineWidth: 3.5
+                        )
+                    }
+
                     for p in engine.particles {
                         var copy = context
                         copy.opacity = p.opacity
                         copy.translateBy(x: p.x, y: p.y)
                         copy.rotate(by: Angle(degrees: p.rotation))
-                        let rect = CGRect(x: -p.size / 2, y: -p.size * 0.325, width: p.size, height: p.size * 0.65)
-                        copy.fill(Path(rect), with: .color(p.color))
+                        let tiltScale = max(0.18, abs(cos(p.tilt)))
+                        copy.scaleBy(x: 1.0, y: CGFloat(tiltScale))
+
+                        switch p.shape {
+                        case .ribbon:
+                            let h = p.size * p.aspect
+                            let rect = CGRect(x: -p.size / 2, y: -h / 2, width: p.size, height: h)
+                            copy.fill(Path(roundedRect: rect, cornerRadius: 1.5), with: .color(p.color))
+                        case .square:
+                            let s = p.size * 0.78
+                            let rect = CGRect(x: -s / 2, y: -s / 2, width: s, height: s)
+                            copy.fill(Path(roundedRect: rect, cornerRadius: 1.5), with: .color(p.color))
+                        case .diamond:
+                            let s = p.size * 0.55
+                            var path = Path()
+                            path.move(to: CGPoint(x: 0, y: -s))
+                            path.addLine(to: CGPoint(x: s, y: 0))
+                            path.addLine(to: CGPoint(x: 0, y: s))
+                            path.addLine(to: CGPoint(x: -s, y: 0))
+                            path.closeSubpath()
+                            copy.fill(path, with: .color(p.color))
+                        }
                     }
                 }
-                .ignoresSafeArea()
                 .allowsHitTesting(false)
             }
 
@@ -113,7 +186,7 @@ struct TapView: View {
                     gameTitle: "TAP",
                     score: max(0, engine.round - 1),
                     highScore: engine.highScore,
-                    accentColor: CheerUpColors.Tap.yellow,
+                    accentColor: Color(hex: 0x00A896),
                     onReplay: {
                         engine.startGame()
                     },
@@ -124,29 +197,7 @@ struct TapView: View {
                 )
             }
         }
-        .onAppear {
-            guard !hasStartedSession else { return }
-            hasStartedSession = true
-            engine.startGame()
-        }
-        .onReceive(timer) { _ in
-            guard scenePhase == .active else { return }
-            guard !engine.isOver || !engine.particles.isEmpty else { return }
-            engine.tick(dt: 0.05)
-        }
-        .onChange(of: scenePhase) { _, newPhase in
-            if newPhase != .active {
-                if engine.isLive {
-                    pausedByScenePhase = true
-                    engine.isLive = false
-                }
-            } else if pausedByScenePhase && !engine.isOver {
-                pausedByScenePhase = false
-                engine.isLive = true
-            } else {
-                pausedByScenePhase = false
-            }
-        }
+        .coordinateSpace(name: "tapArena")
     }
 
     // MARK: - Top Header (Exit Button on Left, Hearts on Right)
@@ -274,8 +325,11 @@ struct TapView: View {
     // MARK: - 3D Tactile Cube Button
     private func cubeTile(cube: TapCube, size: CGFloat, in geo: GeometryProxy) -> some View {
         Button(action: {
-            let center = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
-            engine.selectCube(cube, tapPoint: center)
+            let fallback = CGPoint(
+                x: geo.frame(in: .named("tapArena")).midX,
+                y: geo.frame(in: .named("tapArena")).midY
+            )
+            engine.selectCube(cube, tapPoint: cubeCenters[cube.id] ?? fallback)
         }) {
             ZStack {
                 // Bottom 3D shadow block
@@ -292,6 +346,19 @@ struct TapView: View {
                     )
             }
             .frame(width: size, height: size)
+            .background(
+                GeometryReader { tileGeo in
+                    let frame = tileGeo.frame(in: .named("tapArena"))
+                    let center = CGPoint(x: frame.midX, y: frame.midY)
+                    Color.clear
+                        .onAppear {
+                            cubeCenters[cube.id] = center
+                        }
+                        .onChange(of: center) { _, newCenter in
+                            cubeCenters[cube.id] = newCenter
+                        }
+                }
+            )
         }
         .buttonStyle(CubeButtonStyle())
         .accessibilityLabel("\(cube.name) cube")
