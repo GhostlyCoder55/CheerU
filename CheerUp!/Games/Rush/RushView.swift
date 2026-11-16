@@ -113,6 +113,7 @@ final class RushViewModel: RushSceneDelegate {
 
     nonisolated func sceneDidTriggerNearMiss(streak: Int) {
         Task { @MainActor in
+            guard !self.activeEffects.contains(where: { $0.type == .flameBoost }) else { return }
             self.mascotMood = streak >= 3 ? .party : .wow
             if streak >= 3 {
                 self.speechText = LanguageManager.shared.tr(

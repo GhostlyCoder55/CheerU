@@ -126,16 +126,16 @@ enum ElementalMoteType: String, CaseIterable, Identifiable {
         switch self {
         case .fire:  return LanguageManager.shared.tr("SPEED + 2X", "VITESSE + 2X", "VELOCIDAD + 2X")
         case .water: return LanguageManager.shared.tr("CALM FLOW", "RALENTI", "CALMA")
-        case .earth: return LanguageManager.shared.tr("+3 GROWTH", "+3 TAILLE", "+3 TAMAÑO")
+        case .earth: return LanguageManager.shared.tr("+1 LENGTH", "+1 TAILLE", "+1 TAMAÑO")
         case .wind:  return LanguageManager.shared.tr("PHASE BODY", "FANTÔME", "ETÉREO")
         }
     }
 
     var points: Int {
         switch self {
-        case .fire:  return 3
-        case .water: return 2
-        case .earth: return 2
+        case .fire:  return 2
+        case .water: return 1
+        case .earth: return 1
         case .wind:  return 2
         }
     }
@@ -144,7 +144,7 @@ enum ElementalMoteType: String, CaseIterable, Identifiable {
         switch self {
         case .fire:  return 1
         case .water: return 1
-        case .earth: return 3 // Earth adds bonus segments
+        case .earth: return 1 // Default orb increases length by +1
         case .wind:  return 1
         }
     }
@@ -153,7 +153,7 @@ enum ElementalMoteType: String, CaseIterable, Identifiable {
         switch self {
         case .fire:  return 5.5
         case .water: return 6.0
-        case .earth: return 0.0 // Instant bonus growth
+        case .earth: return 0.0 // Default orb has no temporary effect
         case .wind:  return 7.5 // Phase through own body
         }
     }
@@ -207,7 +207,7 @@ enum GravityEvent: Equatable {
 
 final class GravityGameCenterManager {
     static let shared = GravityGameCenterManager()
-    static let leaderboardID = "com.gc.CheerUp.gravity.endless"
+    static let leaderboardID = "com.gc.cheerup.gravity.highscore"
 
     private init() {}
 

@@ -199,6 +199,7 @@ enum PingPongEvent: Equatable {
     case powerUpCollected(PingPongPowerUpType, position: CGPoint)
     case playerScored(pointsAdded: Int, newScore: Int, position: CGPoint)
     case cpuScored(newCpuScore: Int, position: CGPoint)
+    case ballMissedLine(position: CGPoint, byPlayer: Bool)
     case stickyCaught(position: CGPoint)
     case stickyLaunched(position: CGPoint)
     case difficultyIncreased(PingPongDifficultyTier)
@@ -210,13 +211,13 @@ enum PingPongEvent: Equatable {
 
 final class PingPongGameCenterManager {
     static let shared = PingPongGameCenterManager()
-    static let endlessLeaderboardID = "com.gc.CheerUp.pingpong.endless"
+    static let leaderboardID = "com.gc.cheerup.pingpong.highscore"
 
     private init() {}
 
-    /// Submit Endless Challenge high score to Game Center if authenticated.
+    /// Submit final Ping Pong score to Game Center if authenticated.
     /// Safe no-op if the player isn't signed into Game Center.
-    func submitEndlessScore(_ score: Int) {
+    func submitScore(_ score: Int) {
         GameCenterManager.shared.submitScore(score, for: .pingPong)
     }
 }

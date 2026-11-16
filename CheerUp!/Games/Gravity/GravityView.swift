@@ -161,11 +161,11 @@ final class GravityViewModel: GravitySceneDelegate {
                     "¡Movimiento lento y preciso! (+\(pointsAdded))"
                 )
             case .earth:
-                self.mascotMood = .wow
+                self.mascotMood = .happy
                 self.speechText = LanguageManager.shared.tr(
-                    "Bonus +3 tail growth! (+\(pointsAdded))",
-                    "Croissance +3 segments ! (+\(pointsAdded))",
-                    "¡Crecimiento +3 segmentos! (+\(pointsAdded))"
+                    "Yum! +1 length. (+\(pointsAdded))",
+                    "Miam ! +1 longueur. (+\(pointsAdded))",
+                    "¡Bien! +1 de largo. (+\(pointsAdded))"
                 )
             case .wind:
                 self.mascotMood = .sus
@@ -494,7 +494,7 @@ struct GravityView: View {
         switch type {
         case .fire:  return LanguageManager.shared.tr("Fire: Fast/2x", "Feu: Vite/2x", "Fuego: 2x")
         case .water: return LanguageManager.shared.tr("Water: Slow", "Eau: Lent", "Agua: Lento")
-        case .earth: return LanguageManager.shared.tr("Earth: +3 Size", "Terre: +3", "Tierra: +3")
+        case .earth: return LanguageManager.shared.tr("Earth: +1 Size", "Terre: +1", "Tierra: +1")
         case .wind:  return LanguageManager.shared.tr("Wind: Ghost", "Vent: Fantôme", "Viento: Fase")
         }
     }
@@ -657,7 +657,7 @@ struct GravityView: View {
                         icon: "sparkles",
                         color: Color(hex: 0xA855F7),
                         title: LanguageManager.shared.tr("4 Elemental Orbs", "4 Orbes Élémentaires", "4 Orbes Elementales"),
-                        detail: LanguageManager.shared.tr("Fire boosts speed & 2x points, Water slows time, Earth grows +3, Wind phases through your tail.", "Feu accélère (2x), Eau ralentit, Terre +3 segments, Vent traverse votre queue.", "Fuego acelera (2x), Agua calma, Tierra +3 segmentos, Viento atraviesa tu cola.")
+                        detail: LanguageManager.shared.tr("Fire boosts speed & 2x points (+2), Water slows time (+1), Earth is the common +1 length orb, Wind (+2) phases through your tail.", "Feu accélère (2x, +2), Eau ralentit (+1), Terre est l'orbe courant (+1), Vent (+2) traverse votre queue.", "Fuego acelera (2x, +2), Agua calma (+1), Tierra es el orbe común (+1), Viento (+2) atraviesa tu cola.")
                     )
                 }
                 .padding(14)

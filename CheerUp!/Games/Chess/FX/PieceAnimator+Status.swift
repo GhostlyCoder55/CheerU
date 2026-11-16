@@ -4,36 +4,41 @@ extension PieceAnimator {
 
     // MARK: - Selection
 
-    public func select(_ p: AnimatedPiece) {
-        deselect()
-        selectedPieceNode = p.node
-        idleBaseY = p.node.position.y
-
+    public func select(_ p: AnimatedPiece, at basePosition: CGPoint? = nil) {
         let n = p.node
-        let baseZ = n.zPosition
-        n.zPosition = baseZ + 20
+        let anchorPos = basePosition ?? (selectedPieceNode === n ? CGPoint(x: n.position.x, y: idleBaseY) : n.position)
 
-        let lift = max(3, 3 * pixelUnit)
-        let bob = SKAction.repeatForever(.sequence([
-            .moveTo(y: idleBaseY + lift + pixelUnit, duration: 0.35),
-            .moveTo(y: idleBaseY + lift - pixelUnit * 0.5, duration: 0.35)
-        ]))
+        // If this piece is already selected, keep it fixed in place on its square without levitating
+        if selectedPieceNode === n {
+            n.removeAction(forKey: "select")
+            n.position = anchorPos
+            n.setScale(1.0)
+            if let frame = selectionFrameNode {
+                frame.position = PixelFX.snap(anchorPos + squareCenterOffset, to: pixelUnit)
+            }
+            return
+        }
+
+        deselect()
+        selectedPieceNode = n
+        idleBaseY = anchorPos.y
+        idleBaseZ = n.zPosition
 
         n.removeAction(forKey: "select")
+        n.position = anchorPos
+        n.zPosition = idleBaseZ + 20
+
+        // Subtle grounded scale feedback while keeping piece position fixed on its square (no levitation)
         n.run(.sequence([
-            .scaleX(to: 1.12, y: 0.88, duration: 0.05),
-            .group([
-                .scaleX(to: 1.0, y: 1.0, duration: 0.10),
-                .moveTo(y: idleBaseY + lift, duration: 0.10)
-            ]),
-            bob
+            .scaleX(to: 1.08, y: 0.94, duration: 0.05),
+            .scaleX(to: 1.0, y: 1.0, duration: 0.08)
         ]), withKey: "select")
 
         if let world, let tex = selectionFrameTexture {
             tex.filteringMode = .nearest
             let frame = SKSpriteNode(texture: tex, size: CGSize(width: tileSize, height: tileSize))
-            frame.position = PixelFX.snap(p.node.position + squareCenterOffset, to: pixelUnit)
-            frame.zPosition = baseZ - 1
+            frame.position = PixelFX.snap(anchorPos + squareCenterOffset, to: pixelUnit)
+            frame.zPosition = idleBaseZ - 1
             frame.alpha = 0
             world.addChild(frame)
             frame.run(.group([
@@ -60,14 +65,9 @@ extension PieceAnimator {
         guard let n = selectedPieceNode else { return }
         selectedPieceNode = nil
         n.removeAction(forKey: "select")
-        let drop = SKAction.moveTo(y: idleBaseY, duration: 0.09)
-        drop.timingMode = .easeIn
-        n.run(.sequence([
-            drop,
-            .scaleX(to: 1.08, y: 0.92, duration: 0.04),
-            .scaleX(to: 1.0, y: 1.0, duration: 0.06)
-        ]), withKey: "select")
-        n.zPosition = max(10, n.zPosition - 20)
+        n.position.y = idleBaseY
+        n.setScale(1.0)
+        n.zPosition = idleBaseZ
     }
 
     internal func dropSelectionIfNeeded(for p: AnimatedPiece) {
@@ -80,7 +80,7 @@ extension PieceAnimator {
         p.node.removeAction(forKey: "select")
         p.node.position.y = idleBaseY
         p.node.setScale(1.0)
-        p.node.zPosition = max(10, p.node.zPosition - 20)
+        p.node.zPosition = idleBaseZ
         selectedPieceNode = nil
     }
 

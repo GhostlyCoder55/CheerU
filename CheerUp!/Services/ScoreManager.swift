@@ -8,6 +8,7 @@ final class ScoreManager {
 
     private let defaults = UserDefaults.standard
     private let prefix = "cheerup.highscore."
+    private var recordedChessMatchIDs = Set<UUID>()
 
     private init() {}
 
@@ -20,16 +21,23 @@ final class ScoreManager {
         if score > current {
             defaults.set(score, forKey: prefix + game.rawValue)
         }
-        // Unified Game Center submission across all games
-        GameCenterManager.shared.submitScore(score, for: game)
     }
 
     @discardableResult
-    func recordChessOutcome(winner: PieceColor?, humanColor: PieceColor = .light) -> Int {
+    func recordChessOutcome(
+        winner: PieceColor?,
+        humanColor: PieceColor = .light,
+        matchID: UUID? = nil
+    ) -> Int {
         let currentWins = highScore(for: .chess)
+        if let matchID {
+            guard !recordedChessMatchIDs.contains(matchID) else { return currentWins }
+            recordedChessMatchIDs.insert(matchID)
+        }
         if winner == humanColor {
             let updatedWins = currentWins + 1
             updateHighScore(for: .chess, score: updatedWins)
+            GameCenterManager.shared.submitScore(updatedWins, for: .chess)
             return updatedWins
         }
         return currentWins

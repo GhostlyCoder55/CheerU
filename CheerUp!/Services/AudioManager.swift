@@ -45,6 +45,8 @@ final class AudioManager {
         case combo = "combo"
         case win = "win"
         case ding = "ding"
+        case slimeStick = "slime_stick"
+        case successTrumpet = "success_trumpet"
     }
 
     /// Play a sound effect from the pre-loaded Kenney audio pool asynchronously off the main thread
@@ -75,17 +77,17 @@ final class AudioManager {
 
     private func preloadSounds() {
         for effect in SoundEffect.allCases {
-            if effect == .ding {
-                if let dingData = Self.makeClockDingWAV() {
+            if let (wavData, targetVolume) = Self.synthesizedAudio(for: effect) {
+                if let wavData {
                     var pool: [AVAudioPlayer] = []
                     for _ in 0..<playerPoolSize {
-                        if let player = try? AVAudioPlayer(data: dingData) {
+                        if let player = try? AVAudioPlayer(data: wavData) {
                             player.prepareToPlay()
-                            player.volume = 0.9
+                            player.volume = targetVolume
                             pool.append(player)
                         }
                     }
-                    players[.ding] = pool
+                    players[effect] = pool
                 }
                 continue
             }
@@ -134,6 +136,122 @@ final class AudioManager {
             pcm[i] = Int16(max(-32767.0, min(32767.0, sample * 32767.0)))
         }
 
+        return makeMono16WAV(pcm: pcm, sampleRate: sampleRate)
+    }
+
+    /// Synthesizes a tactile wet slime/sticky "squelch + suction bloop" sound when the ball sticks to the paddle.
+    private static func makeSlimeStickWAV() -> Data? {
+        let sampleRate = 44100
+        let duration = 0.19
+        let totalSamples = Int(duration * Double(sampleRate))
+        var pcm = [Int16](repeating: 0, count: totalSamples)
+
+        var phaseMain = 0.0
+        var phaseBubble = 0.0
+        var noiseState: UInt64 = 0x5EEDBEEF12345678
+        var lpFilter = 0.0
+
+        for i in 0..<totalSamples {
+            let t = Double(i) / Double(sampleRate)
+            let norm = t / duration
+            let attack = min(1.0, t / 0.004)
+            let tailFade = norm > 0.72 ? max(0.0, 1.0 - (norm - 0.72) / 0.28) : 1.0
+
+            // 1. Primary gooey impact compression then sticky suction pull-up (340 Hz -> 145 Hz -> 330 Hz)
+            let mainFreq: Double
+            if t < 0.045 {
+                let u = t / 0.045
+                mainFreq = 340.0 - 195.0 * u
+            } else {
+                let u = min(1.0, (t - 0.045) / 0.115)
+                mainFreq = 145.0 + 185.0 * (u * u)
+            }
+            phaseMain += 2.0 * .pi * mainFreq / Double(sampleRate)
+            let squishEnv = exp(-t * 14.0) * 0.72
+
+            // 2. Wet suction bubble bloop peaking around 55ms..145ms
+            let bubbleT = max(0.0, t - 0.052)
+            let bubbleFreq = 220.0 + 360.0 * min(1.0, bubbleT / 0.085)
+            phaseBubble += 2.0 * .pi * bubbleFreq / Double(sampleRate)
+            let bubbleWindow = t >= 0.052 ? sin(min(1.0, bubbleT / 0.10) * .pi) : 0.0
+            let bubble = sin(phaseBubble) * bubbleWindow * 0.45
+
+            // 3. Modulated low-pass wet squelch noise
+            noiseState = noiseState &* 6364136223846793005 &+ 1442695040888963407
+            let white = Double(Int64(bitPattern: noiseState) >> 32) / Double(Int32.max)
+            // Deterministic 1-pole low-pass (~1 kHz) modulated by sticky ripple
+            lpFilter += 0.13 * (white - lpFilter)
+            let ripple = 0.5 + 0.5 * sin(2.0 * .pi * 48.0 * t)
+            let squelch = lpFilter * exp(-t * 20.0) * ripple * 0.48
+
+            let raw = (sin(phaseMain) * squishEnv + bubble + squelch) * attack * tailFade
+            let sample = tanh(raw * 1.15) * 0.90
+            pcm[i] = Int16(max(-32767.0, min(32767.0, sample * 32767.0)))
+        }
+
+        return makeMono16WAV(pcm: pcm, sampleRate: sampleRate)
+    }
+
+    private static func synthesizedAudio(for effect: SoundEffect) -> (Data?, Float)? {
+        switch effect {
+        case .ding:           return (makeClockDingWAV(), 0.9)
+        case .slimeStick:     return (makeSlimeStickWAV(), 0.95)
+        case .successTrumpet: return (makeSuccessTrumpetWAV(), 0.92)
+        default:              return nil
+        }
+    }
+
+    /// Synthesizes a bright, short 4-note brass trumpet fanfare (C5-E5-G5-C6) for completed challenges.
+    private static func makeSuccessTrumpetWAV() -> Data? {
+        let sampleRate = 44100
+        let duration = 0.78
+        let totalSamples = Int(duration * Double(sampleRate))
+        var pcm = [Int16](repeating: 0, count: totalSamples)
+
+        // (startSec, endSec, frequencyHz, isSustainedFinal)
+        let notes: [(Double, Double, Double, Bool)] = [
+            (0.00, 0.11, 523.25, false),  // C5
+            (0.11, 0.22, 659.25, false),  // E5
+            (0.22, 0.34, 783.99, false),  // G5
+            (0.34, 0.78, 1046.50, true)   // C6 triumph hold
+        ]
+
+        var phase = 0.0
+        for i in 0..<totalSamples {
+            let t = Double(i) / Double(sampleRate)
+            guard let note = notes.first(where: { t >= $0.0 && t < $0.1 }) else { continue }
+
+            let noteT = t - note.0
+            let noteLen = note.1 - note.0
+            let attack = min(1.0, noteT / 0.012)
+            let releaseLen = note.3 ? 0.14 : 0.025
+            let release = min(1.0, max(0.0, (note.1 - t) / releaseLen))
+            let decay = note.3 ? exp(-noteT * 2.2) : exp(-noteT * 5.0)
+
+            // Crisp brass tongue scoop at note onset + gentle vibrato on final held note
+            let onsetScoop = 1.0 - 0.025 * exp(-noteT * 90.0)
+            let vibrato = note.3 ? (1.0 + 0.004 * sin(2.0 * .pi * 5.8 * noteT) * min(1.0, noteT / 0.15)) : 1.0
+            let freq = note.2 * onsetScoop * vibrato
+            phase += 2.0 * .pi * freq / Double(sampleRate)
+
+            // Trumpet harmonic spectrum (bright upper partials blooming cleanly after attack)
+            let brassBloom = min(1.0, noteT / 0.022)
+            let h1 = sin(phase) * 0.48
+            let h2 = sin(phase * 2.0) * 0.30 * (0.65 + 0.35 * brassBloom)
+            let h3 = sin(phase * 3.0) * 0.19 * brassBloom
+            let h4 = sin(phase * 4.0) * 0.11 * brassBloom * exp(-noteT * 4.0)
+            let h5 = sin(phase * 5.0) * 0.06 * brassBloom * exp(-noteT * 6.5)
+
+            let env = attack * release * decay * (noteLen > 0 ? 1.0 : 0.0)
+            let sample = tanh((h1 + h2 + h3 + h4 + h5) * env * 1.1) * 0.88
+            pcm[i] = Int16(max(-32767.0, min(32767.0, sample * 32767.0)))
+        }
+
+        return makeMono16WAV(pcm: pcm, sampleRate: sampleRate)
+    }
+
+    private static func makeMono16WAV(pcm: [Int16], sampleRate: Int) -> Data? {
+        guard !pcm.isEmpty else { return nil }
         let dataSize = pcm.count * 2
         let fileSize = 36 + dataSize
         var header = Data()
@@ -156,10 +274,12 @@ final class AudioManager {
         header.append(u32(UInt32(dataSize)))
 
         pcm.withUnsafeBufferPointer { ptr in
-            header.append(UnsafeBufferPointer(
-                start: UnsafeRawPointer(ptr.baseAddress!)?.assumingMemoryBound(to: UInt8.self),
-                count: dataSize
-            ))
+            if let base = ptr.baseAddress {
+                header.append(UnsafeBufferPointer(
+                    start: UnsafeRawPointer(base).assumingMemoryBound(to: UInt8.self),
+                    count: dataSize
+                ))
+            }
         }
         return header
     }

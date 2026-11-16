@@ -27,6 +27,7 @@ public final class PieceAnimator {
     internal var selectionFrameNode: SKSpriteNode?
     internal var dimNode: SKSpriteNode?
     internal var idleBaseY: CGFloat = 0
+    internal var idleBaseZ: CGFloat = 12
 
     /// Offset from a piece's bottom-center `position` to the visual center of its square.
     public var squareCenterOffset: CGPoint
@@ -276,12 +277,13 @@ public final class PieceAnimator {
     public func capture(
         attacker a: AnimatedPiece,
         victim v: AnimatedPiece,
+        destination: CGPoint? = nil,
         trays: [CapturedTray] = [],
         completion: (() -> Void)? = nil
     ) {
         dropSelectionIfNeeded(for: a)
         let nA = a.node, nV = v.node
-        let start = nA.position, target = nV.position
+        let start = nA.position, target = destination ?? nV.position
         let impactCenter = target + squareCenterOffset
         let baseZ = nA.zPosition
         nA.zPosition = 45

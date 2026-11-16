@@ -31,6 +31,7 @@ final class RushEngine {
     private(set) var nearMissStreak: Int = 0
     private(set) var isGameOver: Bool = false
     private(set) var hasUsedRewardedContinue: Bool = false
+    private var hasSubmittedScoreForCurrentEnding: Bool = false
     private(set) var elapsedTime: Double = 0.0
 
     private(set) var asteroids: [RushMeteor] = []
@@ -79,6 +80,7 @@ final class RushEngine {
         nearMissStreak = 0
         isGameOver = false
         hasUsedRewardedContinue = false
+        hasSubmittedScoreForCurrentEnding = false
         elapsedTime = 0.0
 
         shipX = worldWidth * 0.5
@@ -110,6 +112,7 @@ final class RushEngine {
     func continueAfterReward() {
         guard !hasUsedRewardedContinue else { return }
         hasUsedRewardedContinue = true
+        hasSubmittedScoreForCurrentEnding = false
         isGameOver = false
 
         shipVX = 0.0
@@ -411,12 +414,8 @@ final class RushEngine {
             // 1. Direct Contact Check (Calibrated to solid asteroid rock & spaceship hull)
             if isMeteorContactingShip(meteor) {
                 if isFlameBoostActive {
-                    // Ship is intangible during the 3s Flaming Orange Orb boost!
-                    if !meteor.hasGrantedNearMiss {
-                        asteroids[i].hasGrantedNearMiss = true
-                        nearMissStreak += 1
-                        events.append(.nearMiss(x: (meteor.x + shipX) * 0.5, y: (meteor.y + shipY) * 0.5, streak: nearMissStreak))
-                    }
+                    // Ship is intangible during the 5s Flaming Orange Orb boost; suppress Close Call during boost
+                    asteroids[i].hasGrantedNearMiss = true
                     continue
                 }
                 if invulnerabilityTimer > 0 {
@@ -440,8 +439,8 @@ final class RushEngine {
                 }
             }
 
-            // 2. Near-Miss Graze Visual & Haptic Feedback (score is strictly 3s = 1pt)
-            if !meteor.hasGrantedNearMiss && dist < RushMeteor.grazeRadius && meteor.y <= shipY + 14.0 {
+            // 2. Near-Miss Graze Visual & Haptic Feedback (suppressed during boost mode)
+            if !isFlameBoostActive && !meteor.hasGrantedNearMiss && dist < RushMeteor.grazeRadius && meteor.y <= shipY + 14.0 {
                 asteroids[i].hasGrantedNearMiss = true
                 nearMissStreak += 1
                 events.append(.nearMiss(x: (meteor.x + shipX) * 0.5, y: (meteor.y + shipY) * 0.5, streak: nearMissStreak))
@@ -455,11 +454,15 @@ final class RushEngine {
     }
 
     private func triggerGameOver(impactX: CGFloat, impactY: CGFloat, events: inout [RushEvent]) {
+        guard !isGameOver else { return }
         isGameOver = true
         let previousBest = ScoreManager.shared.highScore(for: .rush)
         let isNewBest = score > previousBest && score > 0
         ScoreManager.shared.updateHighScore(for: .rush, score: score)
-        RushGameCenterManager.shared.submitScore(score)
+        if !hasSubmittedScoreForCurrentEnding {
+            hasSubmittedScoreForCurrentEnding = true
+            RushGameCenterManager.shared.submitScore(score)
+        }
         events.append(.gameOver(finalScore: score, isNewBest: isNewBest, impactX: impactX, impactY: impactY))
     }
 }

@@ -123,13 +123,20 @@ final class ChessViewModel: ChessSceneDelegate {
         self.timeControl = timeControl
         self.showModeSetup = false
         startNewGame(difficulty: difficulty, playerColor: playerColor, timeControl: timeControl)
-        AudioManager.shared.play(.nextLevel)
     }
 
     func openModeSetup() {
         cancelAI()
+        sessionToken = UUID()
         isPaused = false
+        isAnimating = false
+        pendingPromotion = nil
+        selectedSquare = nil
+        highlightedMoves = []
+        calloutText = nil
         scene.isGamePaused = false
+        scene.clearSelectionAndMarkers()
+        status = .playing
         showModeSetup = true
     }
 
@@ -191,11 +198,18 @@ final class ChessViewModel: ChessSceneDelegate {
         handleBoardTap(square)
     }
 
+    private func matchesMoveDestination(_ move: ChessMove, targetSquare: ChessSquare) -> Bool {
+        if move.to == targetSquare { return true }
+        if move.isCastlingKingside && targetSquare == ChessSquare(file: 7, rank: move.from.rank) { return true }
+        if move.isCastlingQueenside && targetSquare == ChessSquare(file: 0, rank: move.from.rank) { return true }
+        return false
+    }
+
     func chessSceneDidDragPiece(from: ChessSquare, to: ChessSquare) -> Bool {
         guard !showModeSetup, !isAnimating, !isThinking, !isPaused, pendingPromotion == nil else { return false }
         guard !status.isTerminal, turn == humanColor else { return false }
 
-        let legal = engine.state.legalMoves(from: from).filter { $0.to == to }
+        let legal = engine.state.legalMoves(from: from).filter { matchesMoveDestination($0, targetSquare: to) }
         guard !legal.isEmpty else { return false }
 
         selectedSquare = nil
@@ -219,7 +233,7 @@ final class ChessViewModel: ChessSceneDelegate {
         guard !status.isTerminal, turn == humanColor else { return }
 
         if let _ = selectedSquare {
-            let matchingMoves = highlightedMoves.filter { $0.to == square }
+            let matchingMoves = highlightedMoves.filter { matchesMoveDestination($0, targetSquare: square) }
             if !matchingMoves.isEmpty {
                 if matchingMoves.count > 1, matchingMoves.allSatisfy({ $0.promotion != nil }) {
                     selectedSquare = nil
@@ -589,7 +603,7 @@ struct ChessView: View {
             }
 
             // End-of-Game Modal
-            if viewModel.status.isTerminal && !viewModel.isAnimating {
+            if viewModel.status.isTerminal && !viewModel.isAnimating && !viewModel.showModeSetup {
                 gameOverOverlay
                     .transition(.opacity)
                     .zIndex(25)
@@ -774,7 +788,7 @@ struct ChessView: View {
                 .foregroundStyle(CheerUpColors.deepNavy)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
-                .background(Color(hex: 0xF3DDB0))
+                .background(CheerUpColors.lightGrey)
                 .clipShape(Capsule())
             }
         }
@@ -803,7 +817,7 @@ struct ChessView: View {
                 VStack(spacing: 4) {
                     Text("CHESS")
                         .font(CheerUpFont.title)
-                        .foregroundStyle(Color(hex: 0xF3DDB0))
+                        .foregroundStyle(CheerUpColors.lightGrey)
 
                     Text(LanguageManager.shared.tr("Choose AI Difficulty", "Choisissez le niveau de l'IA", "Elige la dificultad de la IA"))
                         .font(CheerUpFont.callout)
@@ -837,11 +851,11 @@ struct ChessView: View {
                             .padding(.vertical, 10)
                             .background(
                                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(isSelected ? Color(hex: 0xF3DDB0) : CheerUpColors.deepNavy.opacity(0.7))
+                                    .fill(isSelected ? CheerUpColors.lightGrey : CheerUpColors.deepNavy.opacity(0.7))
                             )
                             .overlay(
                                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .stroke(isSelected ? Color(hex: 0xFBF0D9) : CheerUpColors.blueGrey.opacity(0.6), lineWidth: 1.5)
+                                    .stroke(isSelected ? CheerUpColors.lightGrey : CheerUpColors.blueGrey.opacity(0.6), lineWidth: 1.5)
                             )
                         }
                     }
@@ -902,12 +916,12 @@ struct ChessView: View {
                                 .frame(maxWidth: .infinity)
                                 .background(
                                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .fill(isSelected ? Color(hex: 0xF3DDB0) : CheerUpColors.deepNavy.opacity(0.7))
+                                        .fill(isSelected ? CheerUpColors.lightGrey : CheerUpColors.deepNavy.opacity(0.7))
                                 )
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                                         .stroke(
-                                            isSelected ? Color(hex: 0xFBF0D9) : CheerUpColors.blueGrey.opacity(0.6),
+                                            isSelected ? CheerUpColors.lightGrey : CheerUpColors.blueGrey.opacity(0.6),
                                             lineWidth: 1.5
                                         )
                                 )

@@ -57,8 +57,12 @@ final class PingPongPixelArt {
             dark = skColor(hex: 0x006B8F)
             light = skColor(hex: 0x8CEFFF)
         case .chaosBall:
-            dark = skColor(hex: 0x5B21B6)
-            light = skColor(hex: 0xDDD6FE)
+            return [
+                "1": skColor(hex: 0x5B21B6),
+                "2": skColor(hex: 0x9333EA),
+                "3": skColor(hex: 0xA855F7),
+                "4": skColor(hex: 0xE9D5FF)
+            ]
         case .doubleBall:
             return [
                 "1": SKColor(red: 0.56, green: 0.67, blue: 0.78, alpha: 1.0),
@@ -158,23 +162,23 @@ final class PingPongPixelArt {
                 "................"
             ]
         case .doublePoints:
-            // Proper symmetric 16x16 5-pointed star with bright facets & center shine
+            // Crisp 16x16 "x2" multiplier icon with pixel highlights & shadow
             return [
-                ".......33.......",
-                ".......44.......",
-                "......3443......",
-                "......3443......",
-                ".....334433.....",
-                "3333323443233333",
-                ".23333444433332.",
-                "..123344443321..",
-                "...1233443321...",
-                "....12322321....",
-                "...1232112321...",
-                "...2321..1232...",
-                "..2321....1232..",
-                "..221......122..",
-                "..11........11..",
+                "................",
+                "................",
+                ".........34443..",
+                "........3444443.",
+                "........342.243.",
+                "43...34.11..342.",
+                "243.342....3421.",
+                ".24342....3421..",
+                "..242....3421...",
+                ".34243..3421....",
+                "342.243.3444443.",
+                "21...12.2222222.",
+                ".1...1..1111111.",
+                "................",
+                "................",
                 "................"
             ]
         case .shield:
@@ -198,23 +202,23 @@ final class PingPongPixelArt {
                 "................"
             ]
         case .chaosBall:
-            // Crisp 16x16 swirling vortex orb with energy sparks
+            // Crisp 16x16 purple question mark (?) with pixel highlights & shadow
             return [
-                "......3333......",
-                "....33222233....",
-                "..332111111233..",
-                "..321134431123..",
-                ".32134444443123.",
-                ".31344211244313.",
-                ".31441....14413.",
-                ".31441.44.14413.",
-                ".31344211244313.",
-                ".32134444443123.",
-                "..321134431123..",
-                "..332111111233..",
-                "....33222233....",
-                "......3333......",
                 "................",
+                ".....344443.....",
+                "...3344333433...",
+                "...3432112343...",
+                "...3321..1233...",
+                "...111...3432...",
+                "........34321...",
+                ".......34321....",
+                "......34321.....",
+                "......3322......",
+                "......1221......",
+                "................",
+                "......3443......",
+                "......3322......",
+                "......1221......",
                 "................"
             ]
         case .doubleBall:
@@ -699,6 +703,15 @@ final class PingPongScene: SKScene {
 
         // Motion trail at higher speeds
         let speed = hypot(engine.ballVel.dx, engine.ballVel.dy)
+        if let prevPos = trailHistory.last,
+           hypot(engine.ballPos.x - prevPos.x, engine.ballPos.y - prevPos.y) > 90 {
+            if !extraTrailHistory.isEmpty && !engine.hasExtraBall {
+                trailHistory = extraTrailHistory
+                extraTrailHistory.removeAll()
+            } else {
+                trailHistory.removeAll()
+            }
+        }
         trailHistory.append(engine.ballPos)
         if trailHistory.count > 18 {
             trailHistory.removeFirst()
@@ -858,8 +871,12 @@ final class PingPongScene: SKScene {
                 triggerScreenShake(intensity: 8.5)
                 spawnPixelSparks(at: CGPoint(x: position.x, y: 36), color: PingPongPixelArt.shared.skColor(hex: 0xFF4B5C), count: 18)
 
+            case .ballMissedLine(let position, let byPlayer):
+                AudioManager.shared.play(.pop)
+                spawnSubtleConfetti(at: position, missedByPlayer: byPlayer)
+
             case .stickyCaught(let position):
-                AudioManager.shared.play(.switchToggle)
+                AudioManager.shared.play(.slimeStick)
                 HapticsManager.shared.lightTap()
                 spawnFloatingText("CAUGHT!", at: CGPoint(x: position.x, y: position.y + 18), colorHex: 0xFFC83D)
 
@@ -945,6 +962,73 @@ final class PingPongScene: SKScene {
                     .moveBy(x: dx, y: dy, duration: 0.24),
                     .fadeOut(withDuration: 0.24),
                     .scale(to: 0.2, duration: 0.24)
+                ]),
+                .removeFromParent()
+            ]))
+        }
+    }
+
+    private func spawnSubtleConfetti(at pos: CGPoint, missedByPlayer: Bool) {
+        let confettiPalette: [UInt] = [
+            0x00A896, // CheerUp Teal
+            0x2EDB8A, // Emerald
+            0xFFC83D, // Gold
+            0xFF7AB6, // Neon Pink
+            0x00D2FF, // Cyan
+            0xA855F7, // Purple
+            0xF5F8FC  // Crisp White
+        ]
+
+        // Subtle expanding pop ring where the ball crossed the line
+        let ring = SKShapeNode(circleOfRadius: 6)
+        ring.position = pos
+        ring.strokeColor = PingPongPixelArt.shared.skColor(hex: 0xF5F8FC, alpha: 0.65)
+        ring.fillColor = .clear
+        ring.lineWidth = 1.5
+        fxLayer.addChild(ring)
+        ring.run(.sequence([
+            .group([
+                .scale(to: 2.6, duration: 0.24),
+                .fadeOut(withDuration: 0.24)
+            ]),
+            .removeFromParent()
+        ]))
+
+        // Satisfying subtle pixel confetti pieces fluttering outward
+        let pieceCount = 16
+        for i in 0..<pieceCount {
+            let colorHex = confettiPalette[i % confettiPalette.count]
+            let w: CGFloat = (i % 2 == 0) ? 5.0 : 3.5
+            let h: CGFloat = (i % 3 == 0) ? 3.5 : 6.0
+            let piece = SKSpriteNode(
+                color: PingPongPixelArt.shared.skColor(hex: colorHex, alpha: 0.92),
+                size: CGSize(width: w, height: h)
+            )
+            piece.position = pos
+            piece.zRotation = CGFloat.random(in: 0...(2 * .pi))
+            fxLayer.addChild(piece)
+
+            // Fan confetti nicely into the court from the passed line
+            let baseAngle: CGFloat = missedByPlayer ? (.pi * 0.5) : (-.pi * 0.5)
+            let spread = CGFloat.random(in: -(.pi * 0.44)...(.pi * 0.44))
+            let angle = baseAngle + spread
+            let dist = CGFloat.random(in: 22...58)
+            let dx = cos(angle) * dist
+            let dy = sin(angle) * dist
+            let dur = TimeInterval.random(in: 0.36...0.52)
+
+            piece.run(.sequence([
+                .group([
+                    .sequence([
+                        .moveBy(x: dx * 0.72, y: dy * 0.72, duration: dur * 0.45),
+                        .moveBy(x: dx * 0.28, y: dy * 0.28 - 10.0, duration: dur * 0.55)
+                    ]),
+                    .rotate(byAngle: CGFloat.random(in: -5.0...5.0), duration: dur),
+                    .sequence([
+                        .wait(forDuration: dur * 0.35),
+                        .fadeOut(withDuration: dur * 0.65)
+                    ]),
+                    .scale(to: 0.35, duration: dur)
                 ]),
                 .removeFromParent()
             ]))

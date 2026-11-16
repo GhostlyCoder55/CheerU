@@ -17,6 +17,7 @@ final class GravityEngine {
     private(set) var motesCollectedCount: Int = 0
     private(set) var isGameOver: Bool = false
     private(set) var hasUsedRewardedContinue: Bool = false
+    private var hasSubmittedScoreForCurrentEnding: Bool = false
 
     // Serpent body: index 0 is Head, last is Tail
     private(set) var segments: [GridCoord] = []
@@ -71,6 +72,7 @@ final class GravityEngine {
         motesCollectedCount = 0
         isGameOver = false
         hasUsedRewardedContinue = false
+        hasSubmittedScoreForCurrentEnding = false
         orientation = .south
         moveDirection = .up
         queuedDirections.removeAll()
@@ -92,9 +94,9 @@ final class GravityEngine {
         spawnedMotes.removeAll()
         activeEffects.removeAll()
 
-        // Spawn 3 initial elemental motes so the world feels alive immediately
+        // Spawn 3 initial orbs with Earth guaranteed as the default orb
         spawnMote(preferredType: .earth)
-        spawnMote(preferredType: .fire)
+        spawnMote(preferredType: nil)
         spawnMote(preferredType: nil)
     }
 
@@ -103,6 +105,7 @@ final class GravityEngine {
     func continueAfterReward() {
         guard !hasUsedRewardedContinue else { return }
         hasUsedRewardedContinue = true
+        hasSubmittedScoreForCurrentEnding = false
         isGameOver = false
 
         queuedDirections.removeAll()
@@ -325,20 +328,23 @@ final class GravityEngine {
         if let preferredType {
             chosenType = preferredType
         } else {
-            // Balanced elemental distribution
-            let roll = Double.random(in: 0...1)
-            if roll < 0.34 {
-                chosenType = .earth
-            } else if roll < 0.60 {
-                chosenType = .fire
-            } else if roll < 0.82 {
-                chosenType = .water
-            } else {
-                chosenType = .wind
-            }
+            chosenType = Self.randomElementalMoteType(roll: Double.random(in: 0..<1))
         }
 
         spawnedMotes.append(SpawnedMote(type: chosenType, coord: chosenCoord))
+    }
+
+    static func randomElementalMoteType(roll: Double) -> ElementalMoteType {
+        // Earth is the default most common orb (60%); Fire (red) and Water (blue) are less common (11% each).
+        if roll < 0.60 {
+            return .earth
+        } else if roll < 0.78 {
+            return .wind
+        } else if roll < 0.89 {
+            return .fire
+        } else {
+            return .water
+        }
     }
 
     func isEffectActive(_ type: ElementalMoteType) -> Bool {
@@ -348,11 +354,15 @@ final class GravityEngine {
     // MARK: - Game Over
 
     private func triggerGameOver(events: inout [GravityEvent]) {
+        guard !isGameOver else { return }
         isGameOver = true
         let previousBest = ScoreManager.shared.highScore(for: .gravity)
         let isNewBest = score > previousBest && score > 0
         ScoreManager.shared.updateHighScore(for: .gravity, score: score)
-        GravityGameCenterManager.shared.submitScore(score)
+        if !hasSubmittedScoreForCurrentEnding {
+            hasSubmittedScoreForCurrentEnding = true
+            GravityGameCenterManager.shared.submitScore(score)
+        }
         events.append(.gameOver(finalScore: score, isNewBest: isNewBest))
     }
 }

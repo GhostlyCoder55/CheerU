@@ -13,6 +13,7 @@ final class TapEngine {
     var isOver: Bool = false
     var isLive: Bool = false
     var hasUsedRewardedContinue: Bool = false
+    private var hasSubmittedScoreForCurrentEnding: Bool = false
     private var sessionGeneration: Int = 0
 
     // Mascot & Dialogue
@@ -107,6 +108,7 @@ final class TapEngine {
         isOver = false
         isLive = false
         hasUsedRewardedContinue = false
+        hasSubmittedScoreForCurrentEnding = false
         lastTargetColorId = nil
         particles = []
         burstRings = []
@@ -126,6 +128,7 @@ final class TapEngine {
     func continueAfterReward() {
         guard !hasUsedRewardedContinue else { return }
         hasUsedRewardedContinue = true
+        hasSubmittedScoreForCurrentEnding = false
         sessionGeneration += 1
 
         lives = 1
@@ -510,9 +513,12 @@ final class TapEngine {
     }
 
     private func finishGame() {
+        guard !hasSubmittedScoreForCurrentEnding else { return }
+        hasSubmittedScoreForCurrentEnding = true
         let sc = max(0, round - 1)
         ScoreManager.shared.updateHighScore(for: .tap, score: sc)
         highScore = ScoreManager.shared.highScore(for: .tap)
+        GameCenterManager.shared.submitScore(sc, for: .tap)
         HapticsManager.shared.heavyImpact()
     }
 }

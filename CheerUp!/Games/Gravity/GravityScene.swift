@@ -669,7 +669,6 @@ final class GravityScene: SKScene {
                 gameDelegate?.sceneDidShiftGravity(newOrientation)
 
             case .windPhasedThroughSelf(let coord):
-                AudioManager.shared.play(.switchToggle)
                 HapticsManager.shared.lightTap()
                 let pt = pointForCoord(coord)
                 spawnElementalParticles(at: pt, colorHex: ElementalMoteType.wind.colorHex, count: 12)

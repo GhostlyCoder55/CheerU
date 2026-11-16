@@ -124,7 +124,7 @@ enum RushEvent: Equatable {
 
 final class RushGameCenterManager {
     static let shared = RushGameCenterManager()
-    static let leaderboardID = "com.gc.CheerUp.rush.endless"
+    static let leaderboardID = "com.gc.cheerup.rush.highscore"
 
     private init() {}
 

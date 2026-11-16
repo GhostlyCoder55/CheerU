@@ -172,7 +172,7 @@ final class WheelsEngine {
                     HapticsManager.shared.lightTap()
                 } else {
                     isTimerActive = false
-                    AudioManager.shared.play(.ding)
+                    AudioManager.shared.play(.successTrumpet)
                     HapticsManager.shared.success()
                 }
             }

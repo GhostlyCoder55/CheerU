@@ -32,6 +32,7 @@ final class PingPongEngine {
     private(set) var isGameOver: Bool = false
     private(set) var playerWon: Bool = false
     private(set) var hasUsedRewardedContinue: Bool = false
+    private var hasSubmittedScoreForCurrentEnding: Bool = false
 
     private(set) var difficultyTier: PingPongDifficultyTier = .rookie
     private(set) var highestDifficultyReached: PingPongDifficultyTier = .rookie
@@ -114,6 +115,7 @@ final class PingPongEngine {
         isGameOver = false
         playerWon = false
         hasUsedRewardedContinue = false
+        hasSubmittedScoreForCurrentEnding = false
         difficultyTier = .rookie
         highestDifficultyReached = .rookie
 
@@ -137,6 +139,7 @@ final class PingPongEngine {
     func continueAfterReward() {
         guard !hasUsedRewardedContinue else { return }
         hasUsedRewardedContinue = true
+        hasSubmittedScoreForCurrentEnding = false
         isGameOver = false
         playerWon = false
         if mode == .endless {
@@ -189,6 +192,7 @@ final class PingPongEngine {
     }
 
     func spawnExtraBall() {
+        guard !hasExtraBall else { return }
         hasExtraBall = true
         extraBallPos = ballPos
         let speed = max(baseSpeed, hypot(ballVel.dx, ballVel.dy)) * currentSpeedMultiplier
@@ -296,9 +300,11 @@ final class PingPongEngine {
 
         for _ in 0..<subSteps {
             guard !isGameOver && serveDelayTimer <= 0 && !isBallStuckToPlayer else { break }
-            stepBallPhysics(dt: subDt, events: &events)
-            if !isGameOver && serveDelayTimer <= 0 && hasExtraBall {
+            if hasExtraBall {
                 stepExtraBallPhysics(dt: subDt, events: &events)
+            }
+            if !isGameOver && serveDelayTimer <= 0 && !isBallStuckToPlayer {
+                stepBallPhysics(dt: subDt, events: &events)
             }
         }
 
@@ -375,8 +381,10 @@ final class PingPongEngine {
 
         // Check Scoring / Out of Bounds
         if nextPos.y < -15.0 {
+            let missPos = CGPoint(x: nextPos.x, y: 26.0)
+            events.append(.ballMissedLine(position: missPos, byPlayer: true))
             if hasExtraBall {
-                // Remove only this missed ball; the other ball continues moving normally
+                // Remove only this missed ball permanently; the other ball continues moving normally
                 ballPos = extraBallPos
                 ballVel = extraBallVel
                 hasExtraBall = false
@@ -388,8 +396,10 @@ final class PingPongEngine {
             handlePlayerMissed(events: &events)
             return
         } else if nextPos.y > Self.courtHeight + 15.0 {
+            let missPos = CGPoint(x: nextPos.x, y: Self.courtHeight - 26.0)
+            events.append(.ballMissedLine(position: missPos, byPlayer: false))
             if hasExtraBall {
-                // Player scores with primary ball while both balls remain active!
+                // AI missed this ball: award points and remove this ball permanently; gameplay continues with remaining ball
                 let basePts = mode == .endless ? 3 : 1
                 let pts = isDoublePoints ? basePts * 2 : basePts
                 playerScore += pts
@@ -402,9 +412,11 @@ final class PingPongEngine {
                     return
                 }
 
-                // Re-serve this ball from center net so both balls stay active until missed by player
-                ballPos = CGPoint(x: Self.courtWidth / 2, y: Self.netY)
-                ballVel = freshServeVelocity(towardPlayer: false)
+                // Promote remaining ball; missed ball never respawns or reappears
+                ballPos = extraBallPos
+                ballVel = extraBallVel
+                hasExtraBall = false
+                extraBallVel = .zero
                 return
             }
             // CPU missed the ball! Player scores!
@@ -478,12 +490,16 @@ final class PingPongEngine {
 
         // Extra Ball Out of Bounds
         if nextPos.y < -15.0 {
-            // Remove only the missed extra ball; primary ball continues moving normally
+            let missPos = CGPoint(x: nextPos.x, y: 26.0)
+            events.append(.ballMissedLine(position: missPos, byPlayer: true))
+            // Remove only the missed extra ball permanently; primary ball continues moving normally
             hasExtraBall = false
             extraBallVel = .zero
             return
         } else if nextPos.y > Self.courtHeight + 15.0 {
-            // Extra ball scored past CPU while both balls remain active!
+            let missPos = CGPoint(x: nextPos.x, y: Self.courtHeight - 26.0)
+            events.append(.ballMissedLine(position: missPos, byPlayer: false))
+            // AI missed the extra ball: award points and remove extra ball permanently; primary ball continues moving normally
             let basePts = mode == .endless ? 3 : 1
             let pts = isDoublePoints ? basePts * 2 : basePts
             playerScore += pts
@@ -496,9 +512,9 @@ final class PingPongEngine {
                 return
             }
 
-            // Re-serve extra ball from center net so both balls stay active until missed by player
-            extraBallPos = CGPoint(x: Self.courtWidth / 2, y: Self.netY)
-            extraBallVel = freshServeVelocity(towardPlayer: false)
+            // Extra ball disappears permanently; never respawns or reappears
+            hasExtraBall = false
+            extraBallVel = .zero
             return
         }
 
@@ -712,6 +728,7 @@ final class PingPongEngine {
     }
 
     private func finishGame(playerWon: Bool, events: inout [PingPongEvent]) {
+        guard !isGameOver else { return }
         isGameOver = true
         self.playerWon = playerWon
         ballVel = .zero
@@ -722,8 +739,9 @@ final class PingPongEngine {
         let isNewBest = playerScore > previousBest && playerScore > 0
         ScoreManager.shared.updateHighScore(for: .pingPong, score: playerScore)
 
-        if mode == .endless {
-            PingPongGameCenterManager.shared.submitEndlessScore(playerScore)
+        if !hasSubmittedScoreForCurrentEnding {
+            hasSubmittedScoreForCurrentEnding = true
+            PingPongGameCenterManager.shared.submitScore(playerScore)
         }
 
         events.append(.gameOver(finalScore: playerScore, playerWon: playerWon, isNewBest: isNewBest))

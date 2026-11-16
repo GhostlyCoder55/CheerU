@@ -55,9 +55,17 @@ struct CheerUp_Tests {
         AudioManager.shared.play(.win)
         AudioManager.shared.play(.error)
         AudioManager.shared.play(.combo)
+        AudioManager.shared.play(.ding)
+        AudioManager.shared.play(.slimeStick)
+        AudioManager.shared.play(.successTrumpet)
     }
 
     @Test func wheelsEngineSpinAndOutcomes() async throws {
+        // Verify all timed Wheels challenges have doubled durations (10s...30s, even values)
+        let timedOutcomes = WheelsData.outcomes.compactMap(\.timerSeconds)
+        #expect(timedOutcomes.count == 29)
+        #expect(timedOutcomes.allSatisfy { $0 >= 10 && $0 <= 30 && $0 % 2 == 0 })
+
         let engine = WheelsEngine()
         #expect(!engine.isSpinning)
         #expect(engine.selectedOutcome == nil)
@@ -233,8 +241,14 @@ struct CheerUp_Tests {
         // Move paddle out of the way (far left) and step until the first ball is missed:
         // Game must NOT end when the first of the two balls is missed, only when both are missed.
         var sawSingleBallRemaining = false
+        var missedLineEventsCount = 0
         for _ in 0..<1200 {
-            _ = engine.update(dt: 0.02, targetPlayerX: 20)
+            let events = engine.update(dt: 0.02, targetPlayerX: 20)
+            for ev in events {
+                if case .ballMissedLine = ev {
+                    missedLineEventsCount += 1
+                }
+            }
             if !engine.hasExtraBall && !engine.isGameOver {
                 sawSingleBallRemaining = true
                 #expect(engine.ballVel.dy != 0)
@@ -244,10 +258,32 @@ struct CheerUp_Tests {
             }
         }
         #expect(sawSingleBallRemaining)
+        #expect(missedLineEventsCount >= 2)
         #expect(engine.isGameOver)
     }
 
     @Test func gravityEngineMovementAndBoundaryShift() async throws {
+        // Verify orb scoring, Earth +1 default growth, and weighted spawn frequency (Earth dominant, Fire/Water rare)
+        #expect(ElementalMoteType.earth.points == 1)
+        #expect(ElementalMoteType.water.points == 1)
+        #expect(ElementalMoteType.fire.points == 2)
+        #expect(ElementalMoteType.wind.points == 2)
+        #expect(ElementalMoteType.earth.growthSegments == 1)
+        #expect(ElementalMoteType.earth.effectDuration == 0.0)
+
+        var counts: [ElementalMoteType: Int] = [:]
+        for step in 0..<100 {
+            let type = GravityEngine.randomElementalMoteType(roll: (Double(step) + 0.5) / 100.0)
+            counts[type, default: 0] += 1
+        }
+        #expect(counts[.earth, default: 0] == 60)
+        #expect(counts[.wind, default: 0] == 18)
+        #expect(counts[.fire, default: 0] == 11)
+        #expect(counts[.water, default: 0] == 11)
+        #expect(counts[.earth, default: 0] > counts[.wind, default: 0])
+        #expect(counts[.wind, default: 0] > counts[.fire, default: 0])
+        #expect(counts[.wind, default: 0] > counts[.water, default: 0])
+
         let engine = GravityEngine()
         engine.reset()
         #expect(engine.score == 0)
@@ -273,12 +309,16 @@ struct CheerUp_Tests {
 
     @Test func gameCenterManagerLeaderboardIDs() async throws {
         let gcm = GameCenterManager.shared
-        #expect(gcm.leaderboardID(for: .tap) == "com.gc.CheerUp.tap.endless")
-        #expect(gcm.leaderboardID(for: .pingPong) == "com.gc.CheerUp.pingpong.endless")
-        #expect(gcm.leaderboardID(for: .gravity) == "com.gc.CheerUp.gravity.endless")
-        #expect(gcm.leaderboardID(for: .rush) == "com.gc.CheerUp.rush.endless")
-        #expect(gcm.leaderboardID(for: .chess) == nil)
+        #expect(gcm.leaderboardID(for: .tap) == "com.gc.cheerup.tap.highscore")
+        #expect(gcm.leaderboardID(for: .pingPong) == "com.gc.cheerup.pingpong.highscore")
+        #expect(gcm.leaderboardID(for: .gravity) == "com.gc.cheerup.gravity.highscore")
+        #expect(gcm.leaderboardID(for: .rush) == "com.gc.cheerup.rush.highscore")
+        #expect(gcm.leaderboardID(for: .chess) == "com.gc.cheerup.chess.wins")
         #expect(gcm.leaderboardID(for: .wheels) == nil)
+
+        #expect(PingPongGameCenterManager.leaderboardID == "com.gc.cheerup.pingpong.highscore")
+        #expect(GravityGameCenterManager.leaderboardID == "com.gc.cheerup.gravity.highscore")
+        #expect(RushGameCenterManager.leaderboardID == "com.gc.cheerup.rush.highscore")
     }
 
     @Test func allGameIdentifiersAreConfiguredWithDescriptionsAndIcons() async throws {
@@ -627,6 +667,14 @@ struct CheerUp_Tests {
         session.reset(difficulty: .advanced, timeControl: .fiveMinutes)
         #expect(session.whiteTimeRemaining == 300)
         #expect(session.state.status == .playing)
+
+        // Verify Play Again (openModeSetup) cleanly dismisses terminal Game Over state
+        let vm = ChessViewModel()
+        vm.beginMatch(difficulty: .beginner, playerColor: .light, timeControl: .threeMinutes)
+        vm.tickClockIfNeeded(now: Date().addingTimeInterval(0.5))
+        vm.openModeSetup()
+        #expect(vm.showModeSetup)
+        #expect(!vm.status.isTerminal)
     }
 
     @Test func rushSpritesFlameBoostOrbAndContactCalibration() async throws {
@@ -667,5 +715,318 @@ struct CheerUp_Tests {
             angularVelocity: 0
         )
         #expect(!engine.isMeteorContactingShip(belowExhaust))
+    }
+}
+
+// MARK: - Game Center Leaderboard Integration Tests
+
+@Suite(.serialized)
+struct GameCenterLeaderboardTests {
+
+    private final class SubmissionRecorder: @unchecked Sendable {
+        struct Entry: Equatable {
+            let score: Int
+            let leaderboardID: String
+        }
+
+        private let lock = NSLock()
+        private(set) var entries: [Entry] = []
+
+        func record(score: Int, leaderboardID: String) {
+            lock.lock()
+            entries.append(Entry(score: score, leaderboardID: leaderboardID))
+            lock.unlock()
+        }
+    }
+
+    private final class AtomicFlag: @unchecked Sendable {
+        private let lock = NSLock()
+        private var value: Bool = false
+
+        func get() -> Bool { lock.withLock { value } }
+        func set(_ newValue: Bool) { lock.withLock { value = newValue } }
+    }
+
+    @Test func unauthenticatedPlayerNeverBlocksOrSubmits() async throws {
+        let recorder = SubmissionRecorder()
+        let manager = GameCenterManager(
+            isPlayerAuthenticated: { false },
+            scoreSubmitter: { score, _, leaderboardID, completion in
+                recorder.record(score: score, leaderboardID: leaderboardID)
+                completion(nil)
+            }
+        )
+
+        #expect(!manager.isAuthenticated)
+        for game in GameIdentifier.allCases {
+            let result: Result<Void, Error> = await withCheckedContinuation { continuation in
+                manager.submitScore(42, for: game) { result in
+                    continuation.resume(returning: result)
+                }
+            }
+            if case .success = result {
+                Issue.record("Expected unauthenticated submission for \(game) to fail")
+            }
+        }
+        #expect(recorder.entries.isEmpty)
+    }
+
+    @Test func isolatedManagerRoutesExactIDsAndHandlesNetworkFailure() async throws {
+        let recorder = SubmissionRecorder()
+        let simulatedError = NSError(domain: "com.gc.test", code: -1009, userInfo: [NSLocalizedDescriptionKey: "Offline"])
+        let failNetwork = AtomicFlag()
+
+        let manager = GameCenterManager(
+            isPlayerAuthenticated: { true },
+            scoreSubmitter: { score, _, leaderboardID, completion in
+                recorder.record(score: score, leaderboardID: leaderboardID)
+                let shouldFail = failNetwork.get()
+                DispatchQueue.global(qos: .utility).async {
+                    completion(shouldFail ? simulatedError : nil)
+                }
+            }
+        )
+
+        let expected: [(GameIdentifier, String, Int)] = [
+            (.tap, "com.gc.cheerup.tap.highscore", 15),
+            (.pingPong, "com.gc.cheerup.pingpong.highscore", 7),
+            (.gravity, "com.gc.cheerup.gravity.highscore", 88),
+            (.rush, "com.gc.cheerup.rush.highscore", 54),
+            (.chess, "com.gc.cheerup.chess.wins", 3)
+        ]
+
+        for (game, expectedID, score) in expected {
+            let result: Result<Void, Error> = await withCheckedContinuation { continuation in
+                manager.submitScore(score, for: game) { result in
+                    continuation.resume(returning: result)
+                }
+            }
+            if case .failure(let err) = result {
+                Issue.record("Unexpected submission failure for \(game): \(err)")
+            }
+            #expect(recorder.entries.last == SubmissionRecorder.Entry(score: score, leaderboardID: expectedID))
+        }
+
+        // Wheels has no leaderboard, and non-positive scores are skipped cleanly
+        let _: Result<Void, Error> = await withCheckedContinuation { continuation in
+            manager.submitScore(10, for: .wheels) { result in continuation.resume(returning: result) }
+        }
+        let _: Result<Void, Error> = await withCheckedContinuation { continuation in
+            manager.submitScore(0, for: .tap) { result in continuation.resume(returning: result) }
+        }
+        #expect(recorder.entries.count == 5)
+
+        // Network failure completes gracefully and stores error without throwing
+        failNetwork.set(true)
+        let failureResult: Result<Void, Error> = await withCheckedContinuation { continuation in
+            manager.submitScore(19, for: .rush) { result in
+                continuation.resume(returning: result)
+            }
+        }
+        if case .failure(let error as NSError) = failureResult {
+            #expect(error.code == -1009)
+        } else {
+            Issue.record("Expected offline network error")
+        }
+        #expect((manager.lastSubmissionError as NSError?)?.code == -1009)
+    }
+
+    @Test func intermediateHighScoreUpdatesDoNotSubmitAndChessTracksCumulativeWins() async throws {
+        let recorder = SubmissionRecorder()
+        GameCenterManager.shared.configureForTesting(
+            isPlayerAuthenticated: { true },
+            scoreSubmitter: { score, _, leaderboardID, completion in
+                recorder.record(score: score, leaderboardID: leaderboardID)
+                completion(nil)
+            }
+        )
+        defer { GameCenterManager.shared.resetTestingConfiguration() }
+
+        let chessKey = "cheerup.highscore.chess"
+        let pingPongKey = "cheerup.highscore.pingPong"
+        let priorChessWins = UserDefaults.standard.object(forKey: chessKey)
+        let priorPingPongBest = UserDefaults.standard.object(forKey: pingPongKey)
+        defer {
+            if let priorChessWins { UserDefaults.standard.set(priorChessWins, forKey: chessKey) } else { UserDefaults.standard.removeObject(forKey: chessKey) }
+            if let priorPingPongBest { UserDefaults.standard.set(priorPingPongBest, forKey: pingPongKey) } else { UserDefaults.standard.removeObject(forKey: pingPongKey) }
+        }
+
+        // 1. Live high-score updates mid-game must NOT trigger Game Center submissions
+        let previousPingBest = ScoreManager.shared.highScore(for: .pingPong)
+        ScoreManager.shared.updateHighScore(for: .pingPong, score: previousPingBest + 5)
+        #expect(recorder.entries.isEmpty)
+
+        // 2. Chess baseline -> non-wins do NOT increment or submit
+        let startingWins = ScoreManager.shared.highScore(for: .chess)
+        let lossMatch = UUID()
+        let drawMatch = UUID()
+        #expect(ScoreManager.shared.recordChessOutcome(winner: .dark, humanColor: .light, matchID: lossMatch) == startingWins)
+        #expect(ScoreManager.shared.recordChessOutcome(winner: nil, humanColor: .light, matchID: drawMatch) == startingWins)
+        #expect(recorder.entries.isEmpty)
+
+        // 3. First human win increments cumulative total by +1 and submits to chess wins leaderboard
+        let winMatch1 = UUID()
+        let winsAfter1 = ScoreManager.shared.recordChessOutcome(winner: .light, humanColor: .light, matchID: winMatch1)
+        #expect(winsAfter1 == startingWins + 1)
+        #expect(ScoreManager.shared.highScore(for: .chess) == startingWins + 1)
+        #expect(recorder.entries == [
+            SubmissionRecorder.Entry(score: startingWins + 1, leaderboardID: "com.gc.cheerup.chess.wins")
+        ])
+
+        // 4. Duplicate completion event for same match does NOT re-increment or re-submit
+        let dupWins = ScoreManager.shared.recordChessOutcome(winner: .light, humanColor: .light, matchID: winMatch1)
+        #expect(dupWins == startingWins + 1)
+        #expect(recorder.entries.count == 1)
+
+        // 5. Starting a new ChessViewModel match preserves cumulative wins; a second win increments to +2
+        await MainActor.run {
+            let vm = ChessViewModel()
+            vm.startNewGame(difficulty: .beginner, playerColor: .dark, timeControl: .untimed)
+            #expect(vm.gamesWon == startingWins + 1)
+        }
+        let winMatch2 = UUID()
+        let winsAfter2 = ScoreManager.shared.recordChessOutcome(winner: .dark, humanColor: .dark, matchID: winMatch2)
+        #expect(winsAfter2 == startingWins + 2)
+        #expect(recorder.entries.count == 2)
+        #expect(recorder.entries.last == SubmissionRecorder.Entry(score: startingWins + 2, leaderboardID: "com.gc.cheerup.chess.wins"))
+    }
+
+    @Test @MainActor func allArcadeEnginesSubmitOnceAtGameOverAndIgnoreAbandonment() async throws {
+        let recorder = SubmissionRecorder()
+        GameCenterManager.shared.configureForTesting(
+            isPlayerAuthenticated: { true },
+            scoreSubmitter: { score, _, leaderboardID, completion in
+                recorder.record(score: score, leaderboardID: leaderboardID)
+                completion(nil)
+            }
+        )
+        defer { GameCenterManager.shared.resetTestingConfiguration() }
+
+        let keys = ["cheerup.highscore.pingPong", "cheerup.highscore.rush", "cheerup.highscore.gravity", "cheerup.highscore.tap"]
+        let savedDefaults = keys.map { ($0, UserDefaults.standard.object(forKey: $0)) }
+        defer {
+            for (k, v) in savedDefaults {
+                if let v { UserDefaults.standard.set(v, forKey: k) } else { UserDefaults.standard.removeObject(forKey: k) }
+            }
+        }
+
+        // --- Ping Pong (Endless): score increases live without submission, then submits once at game over ---
+        let pingPong = PingPongEngine()
+        pingPong.reset(mode: .endless)
+        var pingEvents: [PingPongEvent] = []
+        // Play keeping player paddle tracked to the ball until playerScore >= 1, then abandon paddle so CPU scores
+        for _ in 0..<2500 where !pingPong.isGameOver {
+            let targetX: CGFloat = pingPong.playerScore >= 1 ? -500 : pingPong.ballPos.x
+            pingEvents.append(contentsOf: pingPong.update(dt: 1.0 / 60.0, targetPlayerX: targetX))
+            if !pingPong.isGameOver {
+                // While game is active, no submission should happen
+                #expect(recorder.entries.isEmpty)
+            }
+        }
+        #expect(pingPong.isGameOver)
+        #expect(pingPong.playerScore >= 1)
+        #expect(recorder.entries.count == 1)
+        #expect(recorder.entries.last == SubmissionRecorder.Entry(score: pingPong.playerScore, leaderboardID: "com.gc.cheerup.pingpong.highscore"))
+
+        // Stepping again after gameOver must not submit duplicates
+        _ = pingPong.update(dt: 1.0 / 60.0, targetPlayerX: -500)
+        #expect(recorder.entries.count == 1)
+
+        // Resetting (simulating abandon/restart before game over) submits 0 times
+        pingPong.reset(mode: .classic)
+        #expect(recorder.entries.count == 1)
+
+        // --- Rush: earn survival score >= 1 while invulnerable, then collide to trigger single gameOver submission ---
+        let rush = RushEngine()
+        rush.reset()
+        rush.setInvulnerable(for: 3.2)
+        var dtTicks = 0
+        while rush.score < 1 && dtTicks < 400 {
+            _ = rush.update(dt: 0.02, targetShipPosition: CGPoint(x: rush.shipX, y: rush.shipY))
+            dtTicks += 1
+        }
+        #expect(rush.score >= 1)
+        #expect(!rush.isGameOver)
+        #expect(recorder.entries.count == 1)
+
+        // Allow invulnerability to expire and chase an asteroid until collision triggers gameOver
+        var rushSteps = 0
+        while !rush.isGameOver && rushSteps < 2000 {
+            let target: CGPoint
+            if let meteor = rush.asteroids.first(where: { $0.y > rush.shipY }) {
+                target = CGPoint(x: meteor.x, y: meteor.y)
+            } else {
+                target = CGPoint(x: rush.shipX, y: rush.shipY)
+            }
+            _ = rush.update(dt: 0.02, targetShipPosition: target)
+            rushSteps += 1
+        }
+        #expect(rush.isGameOver)
+        #expect(recorder.entries.count == 2)
+        #expect(recorder.entries.last == SubmissionRecorder.Entry(score: rush.score, leaderboardID: "com.gc.cheerup.rush.highscore"))
+        // Additional updates after gameOver do not duplicate
+        _ = rush.update(dt: 0.02, targetShipPosition: nil)
+        #expect(recorder.entries.count == 2)
+
+        // --- Gravity: eat 1 mote so score > 0 and length >= 5, then self-collide once ---
+        let gravity = GravityEngine()
+        gravity.reset()
+        var gSteps = 0
+        while (gravity.score == 0 || gravity.segments.count < 5) && gSteps < 1000 && !gravity.isGameOver {
+            if let mote = gravity.spawnedMotes.first(where: { $0.type != .wind }) ?? gravity.spawnedMotes.first {
+                let head = gravity.segments[0]
+                if head.x < mote.coord.x { gravity.queueScreenDirection(.right) }
+                else if head.x > mote.coord.x { gravity.queueScreenDirection(.left) }
+                else if head.y < mote.coord.y { gravity.queueScreenDirection(.up) }
+                else if head.y > mote.coord.y { gravity.queueScreenDirection(.down) }
+            }
+            _ = gravity.update(dt: 0.05)
+            gSteps += 1
+        }
+        // Let any wind-phase or boundary-shift grace timer expire while advancing
+        var graceWait = 0
+        while (gravity.isEffectActive(.wind) || graceWait < 12) && graceWait < 200 && !gravity.isGameOver {
+            _ = gravity.update(dt: 0.05)
+            graceWait += 1
+        }
+        // Trace a tight 2x2 clockwise loop (waiting one grid step per turn) until self-collision
+        let turns: [GravityDirection] = [.right, .down, .left, .up]
+        for turn in turns + turns where !gravity.isGameOver {
+            gravity.queueScreenDirection(turn)
+            let startHead = gravity.segments[0]
+            var ticks = 0
+            while gravity.segments[0] == startHead && !gravity.isGameOver && ticks < 20 {
+                _ = gravity.update(dt: 0.05)
+                ticks += 1
+            }
+        }
+        #expect(gravity.score > 0)
+        #expect(gravity.isGameOver)
+        #expect(recorder.entries.count == 3)
+        #expect(recorder.entries.last == SubmissionRecorder.Entry(score: gravity.score, leaderboardID: "com.gc.cheerup.gravity.highscore"))
+        _ = gravity.update(dt: 0.20)
+        #expect(recorder.entries.count == 3)
+
+        // --- Tap: score round 1, then lose all 3 lives -> submits final score once ---
+        let tap = TapEngine()
+        tap.startGame()
+        tap.nextRound()
+        #expect(tap.round == 1)
+        // Round 1 always uses .tap ("Tap color: <NAME>")
+        if let correct = tap.cubeOrder.first(where: { $0.name == tap.instructionWord }) {
+            tap.selectCube(correct, tapPoint: .zero)
+        }
+        tap.nextRound()
+        #expect(tap.round == 2)
+        // Lose all 3 lives via timer expiry cleanly before queued dispatches advance
+        while tap.lives > 0 {
+            tap.nextRound(advanceRound: false)
+            tap.tick(dt: 10.0)
+        }
+        #expect(tap.isOver)
+        let expectedTapScore = max(0, tap.round - 1)
+        try await Task.sleep(nanoseconds: 1_000_000_000)
+        #expect(recorder.entries.count == 4)
+        #expect(recorder.entries.last == SubmissionRecorder.Entry(score: expectedTapScore, leaderboardID: "com.gc.cheerup.tap.highscore"))
     }
 }

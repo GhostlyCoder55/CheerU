@@ -341,13 +341,19 @@ final class ChessScene: SKScene {
         clearLegalMoveMarkers()
 
         if let pieceID, let animated = pieceNodes[pieceID] {
-            animator.select(animated)
+            let basePos = pieceSquareMap[pieceID].map { pieceBottomCenter(for: $0) }
+            animator.select(animated, at: basePos)
         } else {
             animator.deselect()
         }
 
         for move in legalMoves {
             legalDestinationSquares.insert(move.to)
+            if move.isCastlingKingside {
+                legalDestinationSquares.insert(ChessSquare(file: 7, rank: move.from.rank))
+            } else if move.isCastlingQueenside {
+                legalDestinationSquares.insert(ChessSquare(file: 0, rank: move.from.rank))
+            }
             let isCap = move.isCapture
             let tex = isCap ? ChessSpriteAssets.captureTargetTexture : ChessSpriteAssets.legalDotTexture
             let markerSize = isCap ? CGSize(width: tileSize, height: tileSize) : CGSize(width: 16, height: 16)
@@ -365,13 +371,14 @@ final class ChessScene: SKScene {
         ensureBuilt()
         if let anim = pieceNodes[pieceID] {
             let n = anim.node
-            let baseX = n.position.x
+            let basePos = pieceSquareMap[pieceID].map { pieceBottomCenter(for: $0) } ?? n.position
             n.removeAction(forKey: "nudge")
+            n.position = basePos
             n.run(.sequence([
-                .moveTo(x: baseX - 3, duration: 0.04),
-                .moveTo(x: baseX + 3, duration: 0.05),
-                .moveTo(x: baseX - 2, duration: 0.04),
-                .moveTo(x: baseX, duration: 0.04)
+                .moveTo(x: basePos.x - 3, duration: 0.04),
+                .moveTo(x: basePos.x + 3, duration: 0.05),
+                .moveTo(x: basePos.x - 2, duration: 0.04),
+                .moveTo(x: basePos.x, duration: 0.04)
             ]), withKey: "nudge")
         }
         if let kingSquare {
@@ -499,8 +506,9 @@ final class ChessScene: SKScene {
             pieceSquareMap.removeValue(forKey: cap.id)
 
             if move.isEnPassant {
+                let capPos = move.capturedSquare.map { pieceBottomCenter(for: $0) } ?? destPos
                 AudioManager.shared.play(.bounce)
-                animator.capture(attacker: attacker, victim: victim, trays: trays) { [weak self] in
+                animator.capture(attacker: attacker, victim: victim, destination: capPos, trays: trays) { [weak self] in
                     guard let self, self.animationGeneration == currentGen else { return }
                     self.updateAdvantageLabels()
                     attacker.node.run(.move(to: destPos, duration: 0.08)) {
@@ -509,7 +517,7 @@ final class ChessScene: SKScene {
                 }
             } else {
                 AudioManager.shared.play(.bounce)
-                animator.capture(attacker: attacker, victim: victim, trays: trays) { [weak self] in
+                animator.capture(attacker: attacker, victim: victim, destination: destPos, trays: trays) { [weak self] in
                     guard let self, self.animationGeneration == currentGen else { return }
                     self.updateAdvantageLabels()
                     afterPrimaryMotion()
@@ -533,6 +541,8 @@ final class ChessScene: SKScene {
 
         for (id, anim) in pieceNodes {
             if let sq = pieceSquareMap[id] {
+                anim.node.position = pieceBottomCenter(for: sq)
+                anim.node.setScale(1.0)
                 anim.node.zPosition = 12 + CGFloat(7 - visualRank(for: sq)) * 0.1
             }
         }
@@ -697,8 +707,9 @@ final class ChessScene: SKScene {
         move.timingMode = .easeOut
         anim.node.run(.group([move, .scale(to: 1.0, duration: 0.12)])) { [weak self] in
             guard let self else { return }
+            anim.node.position = dest
             anim.node.zPosition = 12 + CGFloat(7 - self.visualRank(for: square)) * 0.1
-            self.animator.select(anim)
+            self.animator.select(anim, at: dest)
         }
     }
 

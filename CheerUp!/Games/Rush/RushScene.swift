@@ -561,11 +561,15 @@ final class RushScene: SKScene {
                 notifyStateChange()
 
             case .nearMiss(let x, let y, let streak):
+                let closeCallMessage = engine.isFlameBoostActive
+                    ? ""
+                    : LanguageManager.shared.tr("CLOSE CALL!", "C'ÉTAIT JUSTE !", "¡POR POCO!")
+                guard !closeCallMessage.isEmpty else { break }
                 HapticsManager.shared.lightTap()
                 RushAudioController.shared.playNearMiss()
                 spawnPixelBurst(at: CGPoint(x: x, y: y), colorHex: 0x22D3EE, count: 9)
                 spawnFloatingText(
-                    LanguageManager.shared.tr("CLOSE CALL!", "C'ÉTAIT JUSTE !", "¡POR POCO!"),
+                    closeCallMessage,
                     at: CGPoint(x: engine.shipX, y: engine.shipY + 26),
                     colorHex: 0x22D3EE
                 )
@@ -574,6 +578,7 @@ final class RushScene: SKScene {
 
             case .powerUpCollected(let type, let x, let y):
                 if type == .flameBoost {
+                    clearFloatingMessages()
                     HapticsManager.shared.heavyImpact()
                     triggerScreenShake(intensity: 6.5)
                     spawnPixelBurst(at: CGPoint(x: x, y: y), colorHex: 0xFEF08A, count: 18)
@@ -583,8 +588,9 @@ final class RushScene: SKScene {
                 }
                 AudioManager.shared.play(.nextLevel)
                 spawnPixelBurst(at: CGPoint(x: x, y: y), colorHex: type.colorHex, count: 16)
+                let pickupMessage = (type == .flameBoost || engine.isFlameBoostActive) ? "" : "\(type.badgeTitle)"
                 spawnFloatingText(
-                    "\(type.badgeTitle)",
+                    pickupMessage,
                     at: CGPoint(x: x, y: y + 18),
                     colorHex: type.colorHex
                 )
@@ -626,46 +632,8 @@ final class RushScene: SKScene {
     }
 
     private func showWarningTelegraph(for kind: RushSpecialEventKind, safeCorridorX: CGFloat?) {
+        // Keep the top HUD area behind MiniCheerUp! and above the event banner completely free of background boxes/shapes
         telegraphLayer.removeAllChildren()
-        let topY = size.height - 155.0
-
-        if kind == .twinGate, let safeX = safeCorridorX {
-            let safeZone = SKShapeNode(rectOf: CGSize(width: 96, height: 18), cornerRadius: 6)
-            safeZone.position = CGPoint(x: safeX, y: topY)
-            safeZone.fillColor = RushPixelArt.shared.skColor(hex: 0x22D3EE, alpha: 0.25)
-            safeZone.strokeColor = RushPixelArt.shared.skColor(hex: 0x22D3EE, alpha: 0.85)
-            safeZone.lineWidth = 2.0
-            telegraphLayer.addChild(safeZone)
-
-            let pulse = SKAction.sequence([
-                .repeat(.sequence([
-                    .fadeAlpha(to: 0.35, duration: 0.18),
-                    .fadeAlpha(to: 1.0, duration: 0.18)
-                ]), count: 3),
-                .fadeOut(withDuration: 0.18),
-                .removeFromParent()
-            ])
-            safeZone.run(pulse)
-        } else if kind == .meteorShower {
-            let count = 4
-            let step = size.width / CGFloat(count + 1)
-            for i in 1...count {
-                let marker = SKSpriteNode(
-                    color: RushPixelArt.shared.skColor(hex: 0xFF2E93, alpha: 0.85),
-                    size: CGSize(width: 14, height: 6)
-                )
-                marker.position = CGPoint(x: step * CGFloat(i), y: topY)
-                telegraphLayer.addChild(marker)
-                marker.run(.sequence([
-                    .repeat(.sequence([
-                        .fadeAlpha(to: 0.2, duration: 0.16),
-                        .fadeAlpha(to: 0.95, duration: 0.16)
-                    ]), count: 3),
-                    .fadeOut(withDuration: 0.15),
-                    .removeFromParent()
-                ]))
-            }
-        }
     }
 
     // MARK: - Rocket Crash & Meteor Impact Animations
@@ -917,8 +885,17 @@ final class RushScene: SKScene {
         }
     }
 
+    private func clearFloatingMessages() {
+        for child in fxLayer.children where child.name == "floatingMessage" {
+            child.removeAllActions()
+            child.removeFromParent()
+        }
+    }
+
     private func spawnFloatingText(_ text: String, at pos: CGPoint, colorHex: UInt) {
+        guard !text.isEmpty else { return }
         let label = SKLabelNode(fontNamed: "AvenirNext-Heavy")
+        label.name = "floatingMessage"
         label.text = text
         label.fontSize = 13
         label.fontColor = RushPixelArt.shared.skColor(hex: colorHex)
