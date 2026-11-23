@@ -527,8 +527,9 @@ final class PingPongEngine {
         currentRally += 1
         longestRally = max(longestRally, currentRally)
 
-        // In Endless Challenge, every 2 rally hits also awards a rally bonus point, keeping fast rallies rewarding
-        if mode == .endless && currentRally % 2 == 0 {
+        // In Endless Challenge, every player return awards a rally point (independent of shared currentRally parity
+        // so Double Ball ball-loss or Shield saves can never invert parity and stall scoring).
+        if mode == .endless {
             let pts = isDoublePoints ? 2 : 1
             playerScore += pts
             events.append(.playerScored(pointsAdded: pts, newScore: playerScore, position: pos))
@@ -583,7 +584,7 @@ final class PingPongEngine {
         currentRally += 1
         longestRally = max(longestRally, currentRally)
 
-        if mode == .endless && currentRally % 2 == 0 {
+        if mode == .endless {
             let pts = isDoublePoints ? 2 : 1
             playerScore += pts
             events.append(.playerScored(pointsAdded: pts, newScore: playerScore, position: pos))

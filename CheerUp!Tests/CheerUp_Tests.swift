@@ -262,6 +262,83 @@ struct CheerUp_Tests {
         #expect(engine.isGameOver)
     }
 
+    @Test func pingPongScoreContinuesAfterDoubleBallLosesOneBall() async throws {
+        let engine = PingPongEngine()
+        engine.reset(mode: .endless)
+
+        // Advance until ball is live and moving
+        for _ in 0..<60 {
+            _ = engine.update(dt: 0.02, targetPlayerX: engine.ballPos.x)
+            if engine.ballVel.dy != 0 {
+                break
+            }
+        }
+        #expect(engine.ballVel.dy != 0)
+
+        // Activate Double Ball
+        engine.spawnExtraBall()
+        #expect(engine.hasExtraBall)
+
+        // Let one ball disappear by tracking only the primary ball until hasExtraBall becomes false
+        var singleBallPhaseStarted = false
+        for _ in 0..<1500 {
+            let targetX: CGFloat = engine.hasExtraBall ? (engine.ballPos.x > 180 ? 40 : 320) : engine.ballPos.x
+            _ = engine.update(dt: 0.015, targetPlayerX: targetX)
+            if !engine.hasExtraBall && !engine.isGameOver {
+                singleBallPhaseStarted = true
+                break
+            }
+            if engine.isGameOver {
+                break
+            }
+        }
+        #expect(singleBallPhaseStarted)
+        #expect(!engine.isGameOver)
+
+        // Now track the remaining single ball reliably and verify every player paddle hit increases score
+        var playerHitsAfterSingleBall = 0
+        var scoreIncreasesOnPlayerHit = 0
+        for _ in 0..<2500 {
+            let scoreBefore = engine.playerScore
+            let events = engine.update(dt: 0.012, targetPlayerX: engine.ballPos.x)
+            let hitByPlayer = events.contains {
+                if case .paddleHit(let isPlayer, _, _, _) = $0 { return isPlayer }
+                return false
+            }
+            if hitByPlayer {
+                playerHitsAfterSingleBall += 1
+                if engine.playerScore > scoreBefore {
+                    scoreIncreasesOnPlayerHit += 1
+                }
+            }
+            if playerHitsAfterSingleBall >= 4 || engine.isGameOver {
+                break
+            }
+        }
+        #expect(playerHitsAfterSingleBall >= 2)
+        #expect(scoreIncreasesOnPlayerHit == playerHitsAfterSingleBall)
+    }
+
+    @Test func gravityElementalOrbSpritesLoadAllFrames() async throws {
+        for element in ElementalMoteType.allCases {
+            let textures = GravityPixelArt.shared.moteTextures(for: element)
+            #expect(textures.count == GravityPixelArt.moteFrameCount)
+            for tex in textures {
+                #expect(tex.size().width > 0 && tex.size().height > 0)
+            }
+        }
+    }
+
+    @Test func rushPowerUpOrbSpritesLoadAllFrames() async throws {
+        for powerUp in RushPowerUpType.allCases {
+            let textures = RushPixelArt.shared.powerUpOrbTextures(for: powerUp)
+            #expect(textures.count == RushPixelArt.powerUpOrbFrameCount)
+            for tex in textures {
+                #expect(tex.size().width > 0 && tex.size().height > 0)
+            }
+        }
+    }
+
     @Test func gravityEngineMovementAndBoundaryShift() async throws {
         // Verify orb scoring, Earth +1 default growth, and weighted spawn frequency (Earth dominant, Fire/Water rare)
         #expect(ElementalMoteType.earth.points == 1)
@@ -358,8 +435,16 @@ struct CheerUp_Tests {
         #expect(AdMobConfig.testArcadeRewardedAdUnitID == "ca-app-pub-3940256099942544/1712485313")
         #expect(AdMobConfig.wheelsAdUnitID == "ca-app-pub-8075634631393674/3191805276")
         #expect(AdMobConfig.testWheelsAdUnitID == "ca-app-pub-3940256099942544/6978759866")
+        #expect(AdMobConfig.menuVisitsPerAd == 5)
+        #expect(AdMobConfig.preferredMaxAdDurationSeconds == 30)
 
         let manager = await RewardedAdManager.shared
+        await manager.resetMenuVisitCount()
+        for visit in 1...10 {
+            let shouldShow = await manager.recordMenuVisit()
+            #expect(shouldShow == (visit % 5 == 0))
+        }
+        await manager.resetMenuVisitCount()
 
         // 1. Successful reward & duplicate reward prevention
         var rewardCount = 0

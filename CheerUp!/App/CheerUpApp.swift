@@ -236,11 +236,18 @@ struct ArcadeRootView: View {
                 .transition(.opacity)
             } else {
                 // Arcade home
-                ArcadeHomeView(onSelectGame: { game in
-                    withAnimation(CheerUpAnimation.fadeMedium) {
-                        appState.selectGame(game)
+                ArcadeHomeView(
+                    onSelectGame: { game in
+                        withAnimation(CheerUpAnimation.fadeMedium) {
+                            appState.selectGame(game)
+                        }
+                    },
+                    onMenuAppeared: {
+                        RewardedAdManager.shared.handleMenuAppeared {
+                            !appState.isPlayingGame && !appState.showingIntro && appState.selectedGame == nil
+                        }
                     }
-                })
+                )
                 .transition(.opacity)
             }
         }

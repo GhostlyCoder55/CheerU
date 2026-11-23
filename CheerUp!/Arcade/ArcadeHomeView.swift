@@ -5,6 +5,7 @@ import SwiftUI
 
 struct ArcadeHomeView: View {
     let onSelectGame: (GameIdentifier) -> Void
+    var onMenuAppeared: (() -> Void)? = nil
 
     @State private var highScores: [GameIdentifier: Int] = [:]
     @State private var showSettings = false
@@ -85,6 +86,7 @@ struct ArcadeHomeView: View {
         }
         .onAppear {
             loadScores()
+            onMenuAppeared?()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
                 appeared = true
             }

@@ -106,99 +106,21 @@ final class GravityPixelArt {
         return tex
     }
 
-    func moteTexture(for type: ElementalMoteType) -> SKTexture {
-        let key = "mote_\(type.rawValue)"
-        if let cached = cache[key] { return cached }
+    static let moteFrameCount = 8
 
-        let grid: [String]
-        let palette: [Character: SKColor]
-
-        switch type {
-        case .fire:
-            // Pixel Flame Spirit
-            grid = [
-                "....11....",
-                "...1121...",
-                "..112211..",
-                ".11223211.",
-                ".12233321.",
-                ".12333321.",
-                "..123321..",
-                "...1111...",
-                "..........",
-                ".........."
-            ]
-            palette = [
-                "1": skColor(hex: 0xEA580C),
-                "2": skColor(hex: 0xF59E0B),
-                "3": skColor(hex: 0xFEF08A)
-            ]
-
-        case .water:
-            // Pixel Ocean Azure Dewdrop Crystal
-            grid = [
-                "....11....",
-                "...1221...",
-                "..122321..",
-                ".12233221.",
-                ".12332221.",
-                ".12222221.",
-                "..122221..",
-                "...1111...",
-                "..........",
-                ".........."
-            ]
-            palette = [
-                "1": skColor(hex: 0x075985), // Deep aquatic droplet border
-                "2": skColor(hex: 0x0284C7), // Rich ocean azure crystal body
-                "3": skColor(hex: 0xBAE6FD)  // Crisp glint highlight reflection
-            ]
-
-        case .earth:
-            // Enchanted Acorn / Moss Gem
-            grid = [
-                "....33....",
-                "..333333..",
-                ".33444433.",
-                "..112211..",
-                ".11222211.",
-                ".12222221.",
-                "..122221..",
-                "...1111...",
-                "..........",
-                ".........."
-            ]
-            palette = [
-                "1": skColor(hex: 0x059669),
-                "2": skColor(hex: 0x34D399),
-                "3": skColor(hex: 0x78350F), // Earthy brown cap
-                "4": skColor(hex: 0xA16207)
-            ]
-
-        case .wind:
-            // Celestial Light Blue / Pure White Swirl
-            grid = [
-                "...1111...",
-                "..122221..",
-                ".1233311..",
-                ".1231.....",
-                "..123321..",
-                "....1321..",
-                "..112221..",
-                "...1111...",
-                "..........",
-                ".........."
-            ]
-            palette = [
-                "1": skColor(hex: 0x38BDF8),
-                "2": skColor(hex: 0xBAE6FD),
-                "3": SKColor.white
-            ]
+    func moteTextures(for type: ElementalMoteType) -> [SKTexture] {
+        (0..<Self.moteFrameCount).map { frame in
+            let key = "gravity_orb_\(type.rawValue)_\(frame)"
+            if let cached = cache[key] { return cached }
+            let tex = SKTexture(imageNamed: key)
+            tex.filteringMode = .nearest
+            cache[key] = tex
+            return tex
         }
+    }
 
-        let tex = renderPixelGrid(grid, pixelScale: 3, palette: palette)
-        cache[key] = tex
-        return tex
+    func moteTexture(for type: ElementalMoteType) -> SKTexture {
+        moteTextures(for: type)[0]
     }
 
     private func renderPixelGrid(_ grid: [String], pixelScale: Int, palette: [Character: SKColor]) -> SKTexture {
@@ -616,23 +538,27 @@ final class GravityScene: SKScene {
         let container = SKNode()
         container.position = pointForCoord(mote.coord)
 
-        let aura = SKShapeNode(circleOfRadius: tileSize * 0.52)
-        aura.fillColor = GravityPixelArt.shared.skColor(hex: mote.type.colorHex, alpha: 0.22)
-        aura.strokeColor = GravityPixelArt.shared.skColor(hex: mote.type.colorHex, alpha: 0.65)
-        aura.lineWidth = 1.5
-        container.addChild(aura)
-
-        let sprite = SKSpriteNode(texture: GravityPixelArt.shared.moteTexture(for: mote.type))
-        sprite.size = CGSize(width: tileSize * 0.95, height: tileSize * 0.95)
+        let frames = GravityPixelArt.shared.moteTextures(for: mote.type)
+        let sprite = SKSpriteNode(texture: frames.first)
+        // Sized slightly larger than 1 tile so the glowing orb ring sits crisp inside the cell
+        // while its swirling elemental particles extend naturally around it.
+        sprite.size = CGSize(width: tileSize * 1.48, height: tileSize * 1.48)
         container.addChild(sprite)
+
+        if frames.count > 1 {
+            let anim = SKAction.repeatForever(
+                .animate(with: frames, timePerFrame: 0.095, resize: false, restore: false)
+            )
+            sprite.run(anim)
+        }
 
         container.setScale(0.2)
         let popIn = SKAction.scale(to: 1.0, duration: 0.2)
         popIn.timingMode = .easeOut
         let pulse = SKAction.repeatForever(
             .sequence([
-                .scale(to: 1.12, duration: 0.55),
-                .scale(to: 0.92, duration: 0.55)
+                .scale(to: 1.07, duration: 0.55),
+                .scale(to: 0.96, duration: 0.55)
             ])
         )
         container.run(.sequence([popIn, pulse]))

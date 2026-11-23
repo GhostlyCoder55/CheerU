@@ -484,9 +484,11 @@ struct RushView: View {
             HStack(spacing: 8) {
                 ForEach(viewModel.activeEffects) { effect in
                     HStack(spacing: 6) {
-                        Circle()
-                            .fill(effect.type.color)
-                            .frame(width: 8, height: 8)
+                        Image("rush_orb_\(effect.type.rawValue)_0")
+                            .interpolation(.none)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 18, height: 18)
 
                         Text(effect.type.badgeTitle)
                             .font(.system(size: 11, weight: .black, design: .rounded))
@@ -542,15 +544,6 @@ struct RushView: View {
                         action: {
                             HapticsManager.shared.selection()
                             viewModel.resumeGame()
-                        }
-                    )
-
-                    CheerUpSecondaryButton(
-                        LanguageManager.shared.tr("Restart", "Recommencer", "Reiniciar"),
-                        icon: "arrow.clockwise",
-                        action: {
-                            HapticsManager.shared.selection()
-                            viewModel.startGame()
                         }
                     )
 

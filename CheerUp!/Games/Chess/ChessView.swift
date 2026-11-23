@@ -1037,18 +1037,6 @@ struct ChessView: View {
                     )
 
                     CheerUpSecondaryButton(
-                        LanguageManager.shared.tr("New Game", "Nouvelle partie", "Nueva partida"),
-                        icon: "arrow.clockwise",
-                        action: {
-                            HapticsManager.shared.selection()
-                            selectedDifficulty = viewModel.difficulty
-                            selectedPlayerColor = viewModel.humanColor
-                            selectedTimeControl = viewModel.timeControl
-                            viewModel.openModeSetup()
-                        }
-                    )
-
-                    CheerUpSecondaryButton(
                         LanguageManager.shared.tr("Arcade", "Arcade", "Arcade"),
                         icon: "square.grid.2x2.fill",
                         action: {

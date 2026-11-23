@@ -44,93 +44,22 @@ final class RushPixelArt {
         return tex
     }
 
-    /// Little glowing pixel power-up orbs (Shield = Cyan, Slow = Violet, FlameBoost = Flaming Orange)
-    func powerUpOrbTexture(for type: RushPowerUpType) -> SKTexture {
-        let key = "rush_orb_\(type.rawValue)"
-        if let cached = cache[key] { return cached }
+    static let powerUpOrbFrameCount = 8
 
-        if type == .flameBoost {
-            // 10x10 flaming orange pixel orb with lick of fire crown
-            let flameGrid = [
-                "....45....",
-                "...4534...",
-                "..142324..",
-                ".12233321.",
-                "1223333221",
-                "1233333221",
-                "1223322221",
-                ".12222221.",
-                "..112211..",
-                "....11...."
-            ]
-            let tex = renderPixelGrid(flameGrid, pixelScale: 3, palette: [
-                "1": skColor(hex: 0xDC2626), // Deep Crimson Flame Edge
-                "2": skColor(hex: 0xFF5500), // Blazing Orange Core
-                "3": skColor(hex: 0xFEF08A), // White-Hot Solar Center
-                "4": skColor(hex: 0xF97316), // Outer Ember Flicker
-                "5": skColor(hex: 0xFACC15)  // Golden Flame Tip
-            ])
+    /// 8-frame animated pixel power-up orbs (Shield = Blue Shield, Slow = Purple Hourglass, FlameBoost = Red/Orange Lightning)
+    func powerUpOrbTextures(for type: RushPowerUpType) -> [SKTexture] {
+        (0..<Self.powerUpOrbFrameCount).map { frame in
+            let key = "rush_orb_\(type.rawValue)_\(frame)"
+            if let cached = cache[key] { return cached }
+            let tex = SKTexture(imageNamed: key)
+            tex.filteringMode = .nearest
             cache[key] = tex
             return tex
         }
-
-        // 8x8 cute little glowing pixel orb
-        let grid = [
-            "..1111..",
-            ".122321.",
-            "12233221",
-            "12332221",
-            "12222221",
-            "12222221",
-            ".122221.",
-            "..1111.."
-        ]
-
-        let palette: [Character: SKColor]
-        switch type {
-        case .shield:
-            palette = [
-                "1": skColor(hex: 0x0891B2),
-                "2": skColor(hex: 0x22D3EE),
-                "3": SKColor.white
-            ]
-        case .slowTime:
-            palette = [
-                "1": skColor(hex: 0x7E22CE),
-                "2": skColor(hex: 0xA855F7),
-                "3": skColor(hex: 0xF3E8FF)
-            ]
-        case .flameBoost:
-            palette = [:]
-        }
-
-        let tex = renderPixelGrid(grid, pixelScale: 3, palette: palette)
-        cache[key] = tex
-        return tex
     }
 
-    private func renderPixelGrid(_ grid: [String], pixelScale: Int, palette: [Character: SKColor]) -> SKTexture {
-        let rows = grid.count
-        let cols = grid.first?.count ?? 1
-        let width = cols * pixelScale
-        let height = rows * pixelScale
-
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: width, height: height))
-        let image = renderer.image { ctx in
-            let cg = ctx.cgContext
-            cg.interpolationQuality = .none
-            for (rIdx, row) in grid.enumerated() {
-                for (cIdx, ch) in row.enumerated() {
-                    guard let color = palette[ch] else { continue }
-                    cg.setFillColor(color.cgColor)
-                    cg.fill(CGRect(x: cIdx * pixelScale, y: rIdx * pixelScale, width: pixelScale, height: pixelScale))
-                }
-            }
-        }
-
-        let tex = SKTexture(image: image)
-        tex.filteringMode = .nearest
-        return tex
+    func powerUpOrbTexture(for type: RushPowerUpType) -> SKTexture {
+        powerUpOrbTextures(for: type)[0]
     }
 
     func skColor(hex: UInt, alpha: CGFloat = 1.0) -> SKColor {
@@ -522,21 +451,19 @@ final class RushScene: SKScene {
             if let existing = collectibleNodes[col.id] {
                 node = existing
             } else {
-                let tex = RushPixelArt.shared.powerUpOrbTexture(for: col.type)
-                let created = SKSpriteNode(texture: tex, size: tex.size())
+                let frames = RushPixelArt.shared.powerUpOrbTextures(for: col.type)
+                let orbSide: CGFloat = col.type == .flameBoost ? 44.0 : 40.0
+                let created = SKSpriteNode(texture: frames.first, size: CGSize(width: orbSide, height: orbSide))
 
-                // Soft pulsing orb aura (extra fiery double-ring for Flaming Orange Orb)
-                let auraRadius: CGFloat = col.type == .flameBoost ? 18 : 15
-                let aura = SKShapeNode(circleOfRadius: auraRadius)
-                aura.strokeColor = RushPixelArt.shared.skColor(hex: col.type.colorHex, alpha: 0.82)
-                aura.fillColor = RushPixelArt.shared.skColor(hex: col.type.colorHex, alpha: col.type == .flameBoost ? 0.28 : 0.16)
-                aura.lineWidth = col.type == .flameBoost ? 2.2 : 1.5
-                created.addChild(aura)
+                if frames.count > 1 {
+                    let frameDur: TimeInterval = col.type == .flameBoost ? 0.075 : 0.09
+                    created.run(.repeatForever(.animate(with: frames, timePerFrame: frameDur, resize: false, restore: false)))
+                }
 
-                let scaleDuration = col.type == .flameBoost ? 0.32 : 0.55
-                aura.run(.repeatForever(.sequence([
-                    .scale(to: 1.24, duration: scaleDuration),
-                    .scale(to: 0.90, duration: scaleDuration)
+                let pulseDur: TimeInterval = col.type == .flameBoost ? 0.38 : 0.55
+                created.run(.repeatForever(.sequence([
+                    .scale(to: 1.07, duration: pulseDur),
+                    .scale(to: 0.96, duration: pulseDur)
                 ])))
 
                 collectibleLayer.addChild(created)

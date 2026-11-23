@@ -538,15 +538,6 @@ struct PingPongView: View {
                     )
 
                     CheerUpSecondaryButton(
-                        LanguageManager.shared.tr("Restart", "Recommencer", "Reiniciar"),
-                        icon: "arrow.clockwise",
-                        action: {
-                            HapticsManager.shared.selection()
-                            viewModel.startGame()
-                        }
-                    )
-
-                    CheerUpSecondaryButton(
                         LanguageManager.shared.tr("Arcade", "Arcade", "Arcade"),
                         icon: "square.grid.2x2.fill",
                         action: {

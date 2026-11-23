@@ -452,15 +452,19 @@ struct GravityView: View {
     private var quickInstructionsStrip: some View {
         VStack(spacing: 4) {
             // 4 Elemental Orb Powers Legend
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 ForEach(ElementalMoteType.allCases) { mote in
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(mote.color)
-                            .frame(width: 7, height: 7)
+                    HStack(spacing: 3) {
+                        Image("gravity_orb_\(mote.rawValue)_0")
+                            .interpolation(.none)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 15, height: 15)
                         Text(moteLegendLabel(for: mote))
                             .font(.system(size: 10, weight: .bold, design: .rounded))
                             .foregroundStyle(CheerUpColors.lightGrey.opacity(0.92))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
                 }
             }
@@ -505,9 +509,11 @@ struct GravityView: View {
         HStack(spacing: 6) {
             ForEach(viewModel.activeEffects) { effect in
                 HStack(spacing: 5) {
-                    Circle()
-                        .fill(effect.type.color)
-                        .frame(width: 7, height: 7)
+                    Image("gravity_orb_\(effect.type.rawValue)_0")
+                        .interpolation(.none)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 15, height: 15)
 
                     Text(effect.type.shortBadge)
                         .font(.system(size: 10, weight: .black, design: .rounded))
@@ -726,15 +732,6 @@ struct GravityView: View {
                         action: {
                             HapticsManager.shared.selection()
                             viewModel.resumeGame()
-                        }
-                    )
-
-                    CheerUpSecondaryButton(
-                        LanguageManager.shared.tr("Restart", "Recommencer", "Reiniciar"),
-                        icon: "arrow.clockwise",
-                        action: {
-                            HapticsManager.shared.selection()
-                            viewModel.startGame()
                         }
                     )
 

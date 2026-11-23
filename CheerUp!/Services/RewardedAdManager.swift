@@ -21,6 +21,12 @@ enum AdMobConfig {
     /// Official Google Test Rewarded Interstitial Ad Unit ID.
     static let testWheelsAdUnitID = "ca-app-pub-3940256099942544/6978759866"
 
+    // MARK: - Menu & Global Ad Frequency / Duration Settings
+    /// Present a short ad every 5 times the user arrives on the Arcade home menu.
+    static let menuVisitsPerAd = 5
+    /// Target maximum ad duration (30s). Enforced server-side in AdMob Console by disabling "High-engagement ads".
+    static let preferredMaxAdDurationSeconds = 30
+
     // Backward compatibility aliases
     static var rewardedAdUnitID: String { arcadeRewardedAdUnitID }
     static var productionRewardedAdUnitID: String { arcadeRewardedAdUnitID }
@@ -52,6 +58,7 @@ final class RewardedAdManager: NSObject {
     private(set) var arcadeState: RewardedAdState = .idle
     private(set) var wheelsState: RewardedAdState = .idle
     private(set) var isPresentingAd: Bool = false
+    private(set) var menuVisitCount: Int = 0
 
     /// Backward compatibility alias for arcadeState
     var state: RewardedAdState {
@@ -166,6 +173,39 @@ final class RewardedAdManager: NSObject {
     /// Backward compatibility alias for preloadArcadeAdIfNeeded
     func preloadIfNeeded() {
         preloadArcadeAdIfNeeded()
+    }
+
+    // MARK: - Arcade Home Menu Ad Trigger (Every 5 Menu Visits)
+
+    /// Records a visit to the Arcade home menu and returns `true` every 5th visit.
+    @discardableResult
+    func recordMenuVisit() -> Bool {
+        menuVisitCount += 1
+        return menuVisitCount > 0 && menuVisitCount % AdMobConfig.menuVisitsPerAd == 0
+    }
+
+    func resetMenuVisitCount() {
+        menuVisitCount = 0
+    }
+
+    /// Call when the user lands on the Arcade home menu. Every 5th visit, presents a short ad.
+    func handleMenuAppeared(isStillOnMenu: @escaping @MainActor () -> Bool) {
+        preloadAllIfNeeded()
+        guard recordMenuVisit() else { return }
+        guard !isPresentingAd else { return }
+
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            guard let self, !self.isPresentingAd, isStillOnMenu() else { return }
+            self.presentWheelsAd(
+                onRewardEarned: {
+                    self.preloadWheelsAdIfNeeded()
+                },
+                onDismissedWithoutReward: {
+                    self.preloadWheelsAdIfNeeded()
+                }
+            )
+        }
     }
 
     // MARK: - Arcade Games Ad Presentation (Tap, Rush, Gravity, Ping Pong)
