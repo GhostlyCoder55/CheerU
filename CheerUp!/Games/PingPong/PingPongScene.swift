@@ -361,6 +361,7 @@ final class PingPongScene: SKScene {
 
     private let shieldBarrierNode = SKShapeNode()
     private var powerUpNodes: [UUID: SKNode] = [:]
+    private var activePowerUpIDs = Set<UUID>()
 
     // Input & timing
     private var activeTouch: UITouch?
@@ -397,6 +398,15 @@ final class PingPongScene: SKScene {
     override func didMove(to view: SKView) {
         view.isMultipleTouchEnabled = false
         layoutCourtForScreenSize()
+        preloadTextures()
+    }
+
+    private func preloadTextures() {
+        var textures: [SKTexture] = [PingPongPixelArt.shared.ballTexture()]
+        for type in PingPongPowerUpType.allCases {
+            textures.append(PingPongPixelArt.shared.powerUpTexture(for: type))
+        }
+        SKTexture.preload(textures) {}
     }
 
     override func didChangeSize(_ oldSize: CGSize) {
@@ -766,25 +776,30 @@ final class PingPongScene: SKScene {
         // Shield barrier visibility
         shieldBarrierNode.isHidden = !engine.hasShieldActive
 
-        // Sync spawned field power-up nodes
-        let currentIDs = Set(engine.spawnedPowerUps.map { $0.id })
-        for (id, node) in powerUpNodes where !currentIDs.contains(id) {
-            node.removeFromParent()
-            powerUpNodes.removeValue(forKey: id)
-        }
+        // Sync spawned field power-up nodes (zero allocation when idle)
+        if !powerUpNodes.isEmpty || !engine.spawnedPowerUps.isEmpty {
+            activePowerUpIDs.removeAll(keepingCapacity: true)
+            for item in engine.spawnedPowerUps {
+                activePowerUpIDs.insert(item.id)
+            }
+            for (id, node) in powerUpNodes where !activePowerUpIDs.contains(id) {
+                node.removeFromParent()
+                powerUpNodes.removeValue(forKey: id)
+            }
 
-        for item in engine.spawnedPowerUps {
-            if let existing = powerUpNodes[item.id] {
-                existing.position = item.position
-                // Blink warning when about to despawn
-                let remaining = item.lifetime - item.age
-                if remaining < 2.0 {
-                    existing.alpha = (Int(remaining * 8) % 2 == 0) ? 0.45 : 1.0
+            for item in engine.spawnedPowerUps {
+                if let existing = powerUpNodes[item.id] {
+                    existing.position = item.position
+                    // Blink warning when about to despawn
+                    let remaining = item.lifetime - item.age
+                    if remaining < 2.0 {
+                        existing.alpha = (Int(remaining * 8) % 2 == 0) ? 0.45 : 1.0
+                    }
+                } else {
+                    let node = createPowerUpNode(for: item)
+                    powerUpLayer.addChild(node)
+                    powerUpNodes[item.id] = node
                 }
-            } else {
-                let node = createPowerUpNode(for: item)
-                powerUpLayer.addChild(node)
-                powerUpNodes[item.id] = node
             }
         }
     }

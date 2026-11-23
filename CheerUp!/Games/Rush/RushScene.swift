@@ -112,9 +112,13 @@ final class RushScene: SKScene {
     private var flameFrameIndex: Int = 0
     private var flameTrailTimer: Double = 0.0
 
-    // Dynamic Node Maps
+    // Dynamic Node Maps & Reusable Frame Buffers (Zero per-frame heap allocations)
     private var meteorNodes: [UUID: SKSpriteNode] = [:]
     private var collectibleNodes: [UUID: SKSpriteNode] = [:]
+    private var activeMeteorIDs = Set<UUID>()
+    private var activeCollectibleIDs = Set<UUID>()
+    private var thrusterPool: [SKSpriteNode] = []
+    private var thrusterPoolIndex: Int = 0
     private var stars: [(node: SKSpriteNode, speed: CGFloat)] = []
 
     // Touch-and-drag state (1-finger intuitive movement)
@@ -151,6 +155,19 @@ final class RushScene: SKScene {
     override func didMove(to view: SKView) {
         engine.updateWorldSize(width: size.width, height: size.height)
         rebuildStarfield()
+        preloadTextures()
+    }
+
+    private func preloadTextures() {
+        var textures: [SKTexture] = []
+        textures.reserveCapacity(52)
+        for i in 0..<8 { textures.append(RushPixelArt.shared.spaceshipTexture(frame: i)) }
+        for i in 0..<12 { textures.append(RushPixelArt.shared.flameSpaceshipTexture(frame: i)) }
+        for i in 0..<8 { textures.append(RushPixelArt.shared.meteorTexture(variant: i)) }
+        for type in RushPowerUpType.allCases {
+            textures.append(contentsOf: RushPixelArt.shared.powerUpOrbTextures(for: type))
+        }
+        SKTexture.preload(textures) {}
     }
 
     override func didChangeSize(_ oldSize: CGSize) {
@@ -418,7 +435,7 @@ final class RushScene: SKScene {
 
         // 3. Sync Pixel Asteroids (56x56pt so the solid rock core matches collisionRadius = 19.5pt)
         let meteorSize = CGSize(width: 56, height: 56)
-        var activeMeteorIDs = Set<UUID>()
+        activeMeteorIDs.removeAll(keepingCapacity: true)
         for meteor in engine.asteroids {
             activeMeteorIDs.insert(meteor.id)
             let node: SKSpriteNode
@@ -444,7 +461,7 @@ final class RushScene: SKScene {
         }
 
         // 4. Sync Little Power-Up Orbs
-        var activeCollectibleIDs = Set<UUID>()
+        activeCollectibleIDs.removeAll(keepingCapacity: true)
         for col in engine.collectibles {
             activeCollectibleIDs.insert(col.id)
             let node: SKSpriteNode
@@ -769,23 +786,41 @@ final class RushScene: SKScene {
     }
 
     private func spawnThrusterPixel() {
+        // Object-pooled thruster particles (24 reusable nodes) to avoid ~45 alloc/dealloc cycles per second
+        if thrusterPool.isEmpty {
+            thrusterPool.reserveCapacity(24)
+            for _ in 0..<24 {
+                let node = SKSpriteNode(color: .white, size: CGSize(width: 4, height: 4))
+                node.isHidden = true
+                fxLayer.addChild(node)
+                thrusterPool.append(node)
+            }
+        }
+
+        let p = thrusterPool[thrusterPoolIndex]
+        thrusterPoolIndex = (thrusterPoolIndex + 1) % thrusterPool.count
+        if p.parent == nil {
+            fxLayer.addChild(p)
+        }
+        p.removeAllActions()
+
         let colorHex: UInt = engine.isFlameBoostActive ? 0xFF5500 : (engine.isSlowTimeActive ? 0x22D3EE : 0xFF2E93)
-        let p = SKSpriteNode(
-            color: RushPixelArt.shared.skColor(hex: colorHex, alpha: 0.88),
-            size: CGSize(width: engine.isFlameBoostActive ? 5 : 4, height: engine.isFlameBoostActive ? 6 : 4)
-        )
+        p.color = RushPixelArt.shared.skColor(hex: colorHex, alpha: 0.88)
+        p.size = CGSize(width: engine.isFlameBoostActive ? 5 : 4, height: engine.isFlameBoostActive ? 6 : 4)
+        p.alpha = 1.0
+        p.setScale(1.0)
+        p.isHidden = false
         p.position = CGPoint(
             x: engine.shipX + CGFloat.random(in: -4...4),
             y: engine.shipY - 26
         )
-        fxLayer.addChild(p)
         p.run(.sequence([
             .group([
                 .moveBy(x: CGFloat.random(in: -6...6), y: -26, duration: 0.22),
                 .fadeOut(withDuration: 0.22),
                 .scale(to: 0.3, duration: 0.22)
             ]),
-            .removeFromParent()
+            .hide()
         ]))
     }
 

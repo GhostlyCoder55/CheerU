@@ -7,9 +7,14 @@ import AVFoundation
 final class AudioManager {
     static let shared = AudioManager()
 
+    private static let enabledKey = "cheerup.sound.enabled"
+    private var _isEnabled: Bool
     private(set) var isEnabled: Bool {
-        get { UserDefaults.standard.bool(forKey: "cheerup.sound.enabled") }
-        set { UserDefaults.standard.set(newValue, forKey: "cheerup.sound.enabled") }
+        get { _isEnabled }
+        set {
+            _isEnabled = newValue
+            UserDefaults.standard.set(newValue, forKey: Self.enabledKey)
+        }
     }
 
     private var players: [SoundEffect: [AVAudioPlayer]] = [:]
@@ -17,8 +22,11 @@ final class AudioManager {
     private let audioQueue = DispatchQueue(label: "com.gc.cheerup.audiomanager", qos: .userInitiated)
 
     private init() {
-        if UserDefaults.standard.object(forKey: "cheerup.sound.enabled") == nil {
-            UserDefaults.standard.set(true, forKey: "cheerup.sound.enabled")
+        if UserDefaults.standard.object(forKey: Self.enabledKey) == nil {
+            UserDefaults.standard.set(true, forKey: Self.enabledKey)
+            _isEnabled = true
+        } else {
+            _isEnabled = UserDefaults.standard.bool(forKey: Self.enabledKey)
         }
 
         // Configure audio session and preload audio buffers off the main thread to prevent UI hitches
@@ -76,28 +84,19 @@ final class AudioManager {
     // MARK: - Preloading
 
     private func preloadSounds() {
-        for effect in SoundEffect.allCases {
-            if let (wavData, targetVolume) = Self.synthesizedAudio(for: effect) {
-                if let wavData {
-                    var pool: [AVAudioPlayer] = []
-                    for _ in 0..<playerPoolSize {
-                        if let player = try? AVAudioPlayer(data: wavData) {
-                            player.prepareToPlay()
-                            player.volume = targetVolume
-                            pool.append(player)
-                        }
-                    }
-                    players[effect] = pool
-                }
-                continue
-            }
+        // Preload fast disk-backed gameplay SFX first so taps/bounces are ready immediately on launch,
+        // then synthesize heavier procedural fanfares/bells in the background.
+        let diskEffects = SoundEffect.allCases.filter { $0 != .ding && $0 != .slimeStick && $0 != .successTrumpet }
+        let synthEffects: [SoundEffect] = [.slimeStick, .ding, .successTrumpet]
 
+        for effect in diskEffects {
             guard let url = Bundle.main.url(forResource: effect.rawValue, withExtension: "wav", subdirectory: "Sounds")
                     ?? Bundle.main.url(forResource: effect.rawValue, withExtension: "wav") else {
                 continue
             }
 
             var pool: [AVAudioPlayer] = []
+            pool.reserveCapacity(playerPoolSize)
             for _ in 0..<playerPoolSize {
                 if let player = try? AVAudioPlayer(contentsOf: url) {
                     player.prepareToPlay()
@@ -106,6 +105,21 @@ final class AudioManager {
                 }
             }
             players[effect] = pool
+        }
+
+        for effect in synthEffects {
+            if let (wavData, targetVolume) = Self.synthesizedAudio(for: effect), let wavData {
+                var pool: [AVAudioPlayer] = []
+                pool.reserveCapacity(playerPoolSize)
+                for _ in 0..<playerPoolSize {
+                    if let player = try? AVAudioPlayer(data: wavData) {
+                        player.prepareToPlay()
+                        player.volume = targetVolume
+                        pool.append(player)
+                    }
+                }
+                players[effect] = pool
+            }
         }
     }
 

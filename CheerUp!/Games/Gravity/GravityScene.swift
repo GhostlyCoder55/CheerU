@@ -202,6 +202,7 @@ final class GravityScene: SKScene {
 
     private var segmentNodes: [SKSpriteNode] = []
     private var moteNodes: [UUID: SKNode] = [:]
+    private var activeMoteIDs = Set<UUID>()
     private var fireflies: [SKSpriteNode] = []
 
     private var lastUpdateTime: TimeInterval?
@@ -233,6 +234,20 @@ final class GravityScene: SKScene {
 
     override func didMove(to view: SKView) {
         layoutBoardForScreenSize()
+        preloadTextures()
+    }
+
+    private func preloadTextures() {
+        var textures: [SKTexture] = []
+        textures.reserveCapacity(40)
+        for element in ElementalMoteType.allCases {
+            textures.append(contentsOf: GravityPixelArt.shared.moteTextures(for: element))
+        }
+        textures.append(GravityPixelArt.shared.serpentHeadTexture(isWindPhase: false, isFireBoost: false, isWaterCalm: false))
+        textures.append(GravityPixelArt.shared.serpentHeadTexture(isWindPhase: true, isFireBoost: false, isWaterCalm: false))
+        textures.append(GravityPixelArt.shared.serpentHeadTexture(isWindPhase: false, isFireBoost: true, isWaterCalm: false))
+        textures.append(GravityPixelArt.shared.serpentHeadTexture(isWindPhase: false, isFireBoost: false, isWaterCalm: true))
+        SKTexture.preload(textures) {}
     }
 
     override func didChangeSize(_ oldSize: CGSize) {
@@ -516,9 +531,12 @@ final class GravityScene: SKScene {
             }
         }
 
-        // Sync Elemental Motes
-        let activeIDs = Set(engine.spawnedMotes.map { $0.id })
-        for (id, node) in moteNodes where !activeIDs.contains(id) {
+        // Sync Elemental Motes (reusing pre-allocated ID buffer to avoid per-frame Set allocations)
+        activeMoteIDs.removeAll(keepingCapacity: true)
+        for mote in engine.spawnedMotes {
+            activeMoteIDs.insert(mote.id)
+        }
+        for (id, node) in moteNodes where !activeMoteIDs.contains(id) {
             node.removeFromParent()
             moteNodes.removeValue(forKey: id)
         }

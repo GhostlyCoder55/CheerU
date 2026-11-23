@@ -8,17 +8,39 @@ final class ScoreManager {
 
     private let defaults = UserDefaults.standard
     private let prefix = "cheerup.highscore."
+    private var cachedScores: [GameIdentifier: Int] = [:]
     private var recordedChessMatchIDs = Set<UUID>()
 
-    private init() {}
+    private init() {
+        reloadCache()
+        NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification,
+            object: defaults,
+            queue: nil
+        ) { [weak self] _ in
+            self?.reloadCache()
+        }
+    }
+
+    private func reloadCache() {
+        for game in GameIdentifier.allCases {
+            cachedScores[game] = defaults.integer(forKey: prefix + game.rawValue)
+        }
+    }
 
     func highScore(for game: GameIdentifier) -> Int {
-        defaults.integer(forKey: prefix + game.rawValue)
+        if let cached = cachedScores[game] {
+            return cached
+        }
+        let stored = defaults.integer(forKey: prefix + game.rawValue)
+        cachedScores[game] = stored
+        return stored
     }
 
     func updateHighScore(for game: GameIdentifier, score: Int) {
         let current = highScore(for: game)
         if score > current {
+            cachedScores[game] = score
             defaults.set(score, forKey: prefix + game.rawValue)
         }
     }

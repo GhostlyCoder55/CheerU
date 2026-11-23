@@ -237,7 +237,7 @@ struct GravityView: View {
             // SpriteKit 60 FPS Enchanted Torus Scene (Controlled via Buttons Below)
             SpriteView(
                 scene: viewModel.scene,
-                preferredFramesPerSecond: 60,
+                preferredFramesPerSecond: MobileDisplayConfig.preferredGameFPS,
                 options: [.allowsTransparency, .ignoresSiblingOrder, .shouldCullNonVisibleNodes]
             )
             .ignoresSafeArea()

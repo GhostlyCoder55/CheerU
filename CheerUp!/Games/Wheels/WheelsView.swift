@@ -152,16 +152,23 @@ struct WheelsView: View {
             let wheelSize = min(geo.size.width - 24, geo.size.height - 24, 340)
 
             ZStack {
-                // Outer Glow & Drop Shadow
+                // Lightweight Radial Drop Shadow (zero offscreen Gaussian blur passes per frame)
                 Circle()
-                    .fill(Color.black.opacity(0.4))
-                    .frame(width: wheelSize + 12, height: wheelSize + 12)
-                    .blur(radius: 8)
+                    .fill(
+                        RadialGradient(
+                            colors: [Color.black.opacity(0.45), Color.black.opacity(0.22), Color.clear],
+                            center: .center,
+                            startRadius: wheelSize * 0.42,
+                            endRadius: wheelSize * 0.56
+                        )
+                    )
+                    .frame(width: wheelSize * 1.12, height: wheelSize * 1.12)
                     .offset(y: 8)
 
-                // 12-Segment Clean Wheel (Rotates with engine)
+                // 12-Segment Clean Wheel (Rasterized into a single GPU texture via drawingGroup for smooth 120Hz spins)
                 WheelSegmentsView()
                     .frame(width: wheelSize, height: wheelSize)
+                    .drawingGroup()
                     .rotationEffect(.degrees(engine.rotation))
 
                 // Center Metallic / Dark Hub (from Wheels.html)

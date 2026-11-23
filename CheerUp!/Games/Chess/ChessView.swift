@@ -543,7 +543,7 @@ struct ChessView: View {
                 ZStack(alignment: .top) {
                     SpriteView(
                         scene: viewModel.scene,
-                        preferredFramesPerSecond: 60,
+                        preferredFramesPerSecond: MobileDisplayConfig.preferredGameFPS,
                         options: [.allowsTransparency, .ignoresSiblingOrder, .shouldCullNonVisibleNodes]
                     )
                     .aspectRatio(ChessScene.sceneWidth / ChessScene.sceneHeight, contentMode: .fit)

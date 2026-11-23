@@ -254,7 +254,7 @@ struct PingPongView: View {
             // SpriteKit 60 FPS Table Scene
             SpriteView(
                 scene: viewModel.scene,
-                preferredFramesPerSecond: 60,
+                preferredFramesPerSecond: MobileDisplayConfig.preferredGameFPS,
                 options: [.allowsTransparency, .ignoresSiblingOrder, .shouldCullNonVisibleNodes]
             )
             .ignoresSafeArea()

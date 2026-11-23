@@ -91,9 +91,6 @@ struct ArcadeHomeView: View {
                 appeared = true
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
-            loadScores()
-        }
     }
 
     // MARK: - Header

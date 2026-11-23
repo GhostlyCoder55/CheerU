@@ -249,7 +249,7 @@ struct RushView: View {
             // SpriteKit 60 FPS Portrait Space Dodge Scene
             SpriteView(
                 scene: viewModel.scene,
-                preferredFramesPerSecond: 60,
+                preferredFramesPerSecond: MobileDisplayConfig.preferredGameFPS,
                 options: [.allowsTransparency, .ignoresSiblingOrder, .shouldCullNonVisibleNodes]
             )
             .ignoresSafeArea()

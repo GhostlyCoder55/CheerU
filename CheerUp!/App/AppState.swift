@@ -1,4 +1,16 @@
 import SwiftUI
+import UIKit
+
+// MARK: - Mobile Display Config
+// Adapts SpriteKit render cadence to the device's native refresh rate (60Hz standard,
+// up to 120Hz on ProMotion iPhones — mirrors Android Display.Mode.refreshRate).
+
+enum MobileDisplayConfig {
+    static var preferredGameFPS: Int {
+        let maxFPS = UIScreen.main.maximumFramesPerSecond
+        return min(120, max(60, maxFPS))
+    }
+}
 
 // MARK: - App State
 // Observable object managing navigation and global state.

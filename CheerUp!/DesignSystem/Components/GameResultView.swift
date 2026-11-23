@@ -100,7 +100,7 @@ struct GameResultView: View {
                 adManager.preloadIfNeeded()
             }
 
-            let steps = min(score, 30)
+            let steps = min(score, 14)
             guard steps > 0 else {
                 displayedScore = score
                 scoreRevealed = true
@@ -109,18 +109,15 @@ struct GameResultView: View {
                 }
                 return
             }
-            for i in 0...steps {
-                DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.02) {
-                    withAnimation(.easeOut(duration: 0.1)) {
-                        displayedScore = Int(Double(score) * Double(i) / Double(steps))
-                    }
-                    if i == steps {
-                        displayedScore = score
-                        scoreRevealed = true
-                        if isNewHighScore {
-                            HapticsManager.shared.success()
-                        }
-                    }
+            Task { @MainActor in
+                for i in 1...steps {
+                    try? await Task.sleep(nanoseconds: 25_000_000)
+                    displayedScore = Int(Double(score) * Double(i) / Double(steps))
+                }
+                displayedScore = score
+                scoreRevealed = true
+                if isNewHighScore {
+                    HapticsManager.shared.success()
                 }
             }
         }

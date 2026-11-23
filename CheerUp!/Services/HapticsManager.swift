@@ -7,9 +7,14 @@ import UIKit
 final class HapticsManager: @unchecked Sendable {
     static let shared = HapticsManager()
 
+    private static let enabledKey = "cheerup.haptics.enabled"
+    private var _isEnabled: Bool
     private(set) var isEnabled: Bool {
-        get { UserDefaults.standard.bool(forKey: "cheerup.haptics.enabled") }
-        set { UserDefaults.standard.set(newValue, forKey: "cheerup.haptics.enabled") }
+        get { _isEnabled }
+        set {
+            _isEnabled = newValue
+            UserDefaults.standard.set(newValue, forKey: Self.enabledKey)
+        }
     }
 
     private let lightGenerator = UIImpactFeedbackGenerator(style: .light)
@@ -17,10 +22,14 @@ final class HapticsManager: @unchecked Sendable {
     private let heavyGenerator = UIImpactFeedbackGenerator(style: .heavy)
     private let notificationGenerator = UINotificationFeedbackGenerator()
     private let selectionGenerator = UISelectionFeedbackGenerator()
+    private var lastPrepareTime: CFTimeInterval = 0
 
     private init() {
-        if UserDefaults.standard.object(forKey: "cheerup.haptics.enabled") == nil {
-            UserDefaults.standard.set(true, forKey: "cheerup.haptics.enabled")
+        if UserDefaults.standard.object(forKey: Self.enabledKey) == nil {
+            UserDefaults.standard.set(true, forKey: Self.enabledKey)
+            _isEnabled = true
+        } else {
+            _isEnabled = UserDefaults.standard.bool(forKey: Self.enabledKey)
         }
         prepare()
     }
@@ -35,11 +44,20 @@ final class HapticsManager: @unchecked Sendable {
     func prepare() {
         runOnMain { [weak self] in
             guard let self else { return }
+            self.lastPrepareTime = CACurrentMediaTime()
             self.lightGenerator.prepare()
             self.mediumGenerator.prepare()
             self.heavyGenerator.prepare()
             self.selectionGenerator.prepare()
             self.notificationGenerator.prepare()
+        }
+    }
+
+    private func prepareIfNeeded(_ generator: UIFeedbackGenerator) {
+        let now = CACurrentMediaTime()
+        if now - lastPrepareTime >= 0.45 {
+            lastPrepareTime = now
+            generator.prepare()
         }
     }
 
@@ -59,7 +77,7 @@ final class HapticsManager: @unchecked Sendable {
         runOnMain { [weak self] in
             guard let self else { return }
             self.lightGenerator.impactOccurred()
-            self.lightGenerator.prepare()
+            self.prepareIfNeeded(self.lightGenerator)
         }
     }
 
@@ -68,7 +86,7 @@ final class HapticsManager: @unchecked Sendable {
         runOnMain { [weak self] in
             guard let self else { return }
             self.mediumGenerator.impactOccurred()
-            self.mediumGenerator.prepare()
+            self.prepareIfNeeded(self.mediumGenerator)
         }
     }
 
@@ -77,7 +95,7 @@ final class HapticsManager: @unchecked Sendable {
         runOnMain { [weak self] in
             guard let self else { return }
             self.heavyGenerator.impactOccurred()
-            self.heavyGenerator.prepare()
+            self.prepareIfNeeded(self.heavyGenerator)
         }
     }
 
@@ -88,16 +106,16 @@ final class HapticsManager: @unchecked Sendable {
             switch style {
             case .light:
                 self.lightGenerator.impactOccurred()
-                self.lightGenerator.prepare()
+                self.prepareIfNeeded(self.lightGenerator)
             case .medium:
                 self.mediumGenerator.impactOccurred()
-                self.mediumGenerator.prepare()
+                self.prepareIfNeeded(self.mediumGenerator)
             case .heavy, .rigid, .soft:
                 self.heavyGenerator.impactOccurred()
-                self.heavyGenerator.prepare()
+                self.prepareIfNeeded(self.heavyGenerator)
             @unknown default:
                 self.mediumGenerator.impactOccurred()
-                self.mediumGenerator.prepare()
+                self.prepareIfNeeded(self.mediumGenerator)
             }
         }
     }
@@ -107,7 +125,7 @@ final class HapticsManager: @unchecked Sendable {
         runOnMain { [weak self] in
             guard let self else { return }
             self.notificationGenerator.notificationOccurred(.success)
-            self.notificationGenerator.prepare()
+            self.prepareIfNeeded(self.notificationGenerator)
         }
     }
 
@@ -116,7 +134,7 @@ final class HapticsManager: @unchecked Sendable {
         runOnMain { [weak self] in
             guard let self else { return }
             self.notificationGenerator.notificationOccurred(.warning)
-            self.notificationGenerator.prepare()
+            self.prepareIfNeeded(self.notificationGenerator)
         }
     }
 
@@ -125,7 +143,7 @@ final class HapticsManager: @unchecked Sendable {
         runOnMain { [weak self] in
             guard let self else { return }
             self.notificationGenerator.notificationOccurred(.error)
-            self.notificationGenerator.prepare()
+            self.prepareIfNeeded(self.notificationGenerator)
         }
     }
 
@@ -134,7 +152,7 @@ final class HapticsManager: @unchecked Sendable {
         runOnMain { [weak self] in
             guard let self else { return }
             self.selectionGenerator.selectionChanged()
-            self.selectionGenerator.prepare()
+            self.prepareIfNeeded(self.selectionGenerator)
         }
     }
 }
